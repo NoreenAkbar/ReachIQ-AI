@@ -1,6 +1,5 @@
 # ReachIQ-AI
-Agentic AI YouTube Growth Assistant built using LLMs, AI Agents, Python, and API integrations.
-# ReachIQ AI
+Agentic AI YouTube Growth Assistant built using LLMs, AI Agents, Python, and API integrations
 
 ## Overview
 
