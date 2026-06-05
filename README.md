@@ -1,3 +1,7 @@
+## License
+This project is licensed under AGPL-3.0.
+Commercial use requires explicit written permission from the author.
+Contact: your_email_here
 # ReachIQ-AI
 Agentic AI YouTube Growth Assistant built using LLMs, AI Agents, Python, and API integrations
 
