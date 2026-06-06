@@ -1,4 +1,10 @@
 import os
+os.environ["HF_HOME"] = "E:/Developer_Space/huggingface_cache"
+os.environ["TRANSFORMERS_CACHE"] = "E:/Developer_Space/huggingface_cache"
+os.environ["HF_HUB_VERBOSITY"] = "error"
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import sys
 import time
 import datetime
@@ -10,136 +16,26 @@ os.makedirs("reports", exist_ok=True)
 os.makedirs("logs", exist_ok=True)
 
 # ─────────────────────────────────────────────
-# REACHIQ AI — MAIN ORCHESTRATOR
-# Version 1.0
-# Brain: Groq llama-3.3-70b-versatile
-# Fallback: Ollama llama3.2:1b
-# Vision: Ollama moondream (thumbnail analysis)
+# REACHIQ AI — MAIN ORCHESTRATOR v2.0
+# Brain: Groq Llama 3.3 70B + Gemma via OpenRouter
+# Memory: Mem0 + Qdrant
+# Observability: Langfuse
+# Security: Custom guardrails
 # ─────────────────────────────────────────────
 
 from config import YOUTUBE_API_KEY, GROQ_API_KEY, CHANNEL_ID
-from brain import ask_brain
-
-
-# ─────────────────────────────────────────────
-# HUMAN APPROVAL + SAFETY GATE
-# Every action passes through this before
-# executing. You approve or reject.
-# ─────────────────────────────────────────────
-
-def human_approval_gate(action_name, details):
-    """
-    Pauses execution and waits for human approval.
-    Nothing gets posted or updated without your
-    explicit confirmation.
-    """
-    print("\n" + "=" * 55)
-    print("HUMAN APPROVAL + SAFETY GATE")
-    print("=" * 55)
-    print(f"Action: {action_name}")
-    print(f"Details: {details}")
-    print("=" * 55)
-
-    while True:
-        choice = input("Approve this action? (y/n): ").strip().lower()
-        if choice == "y":
-            log_action(action_name, "APPROVED", details)
-            print("Approved. Executing...")
-            return True
-        elif choice == "n":
-            log_action(action_name, "REJECTED", details)
-            print("Rejected. Skipping this action.")
-            return False
-        else:
-            print("Please enter y or n.")
-
-
-# ─────────────────────────────────────────────
-# VISION ROUTER
-# Routes thumbnail analysis to Ollama moondream
-# since Groq does not support vision.
-# ─────────────────────────────────────────────
-
-def analyze_thumbnail(image_path):
-    """
-    Routes thumbnail analysis to Ollama moondream.
-    Lightweight vision model, runs on CPU.
-    """
-    try:
-        import ollama
-        print("Analyzing thumbnail with moondream (lightweight vision)...")
-
-        response = ollama.chat(
-            model="moondream",
-            messages=[{
-                "role": "user",
-                "content": """Analyze this YouTube thumbnail.
-                    
-Return ONLY valid JSON, no extra text.
-
-FORMAT:
-{
-  "visibility_score": 0,
-  "text_readability": "",
-  "emotional_impact": "",
-  "color_contrast": "",
-  "suggested_improvements": [],
-  "ctr_prediction": ""
-}""",
-                "images": [image_path]
-            }]
-        )
-        result = response["message"]["content"]
-        try:
-            clean = result.strip()
-            if "```" in clean:
-                clean = clean.split("```")[1]
-                if clean.startswith("json"):
-                    clean = clean[4:]
-            return json.loads(clean)
-        except:
-            return result
-
-    except ollama.ResponseError as e:
-        if "not found" in str(e).lower():
-            print("moondream not installed yet.")
-            print("Run this in Terminal 1: ollama pull moondream")
-            print("Then try thumbnail analysis again.")
-        else:
-            print(f"Vision model error: {e}")
-        return None
-
-    except Exception as e:
-        print(f"Thumbnail analysis failed: {e}")
-        return None
-
-
-# ─────────────────────────────────────────────
-# ACTION LOGGER
-# Logs every action ReachIQ AI takes.
-# ─────────────────────────────────────────────
-
-def log_action(action, status, details=""):
-    """
-    Logs every action to a daily log file.
-    Builds your agent's history over time.
-    """
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_file = os.path.join(
-        "logs",
-        f"reachiq_log_{datetime.date.today()}.txt"
-    )
-
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(f"[{timestamp}] {status} | {action}\n")
-        if details:
-            f.write(f"  Details: {str(details)[:200]}\n")
+from brain import ask_brain, ask_with_fallback
+from memory import (store_video_performance, get_channel_patterns,
+                    get_smart_suggestions, view_memory_stats)
+from observability import (trace_agent_action, measure_and_trace,
+                           get_daily_performance_summary,
+                           view_recent_traces)
+from security import (secure_input, validate_youtube_metadata,
+                      validate_social_media_post, get_security_report)
 
 
 # ─────────────────────────────────────────────
 # MCP TOOL REGISTRY
-# Register tools here. Future tools plug in
-# without touching any other code.
 # ─────────────────────────────────────────────
 
 MCP_TOOLS = {
@@ -183,10 +79,30 @@ MCP_TOOLS = {
         "function": "get_video_stats",
         "description": "Fetches stats for a specific video"
     },
-    "analyze_thumbnail": {
-        "module": "main",
-        "function": "analyze_thumbnail",
-        "description": "Analyzes thumbnail using Ollama moondream vision"
+    "store_video_performance": {
+        "module": "memory",
+        "function": "store_video_performance",
+        "description": "Stores video performance in memory"
+    },
+    "get_channel_patterns": {
+        "module": "memory",
+        "function": "get_channel_patterns",
+        "description": "Gets learned channel patterns from memory"
+    },
+    "get_smart_suggestions": {
+        "module": "memory",
+        "function": "get_smart_suggestions",
+        "description": "Gets AI suggestions based on memory"
+    },
+    "secure_input": {
+        "module": "security",
+        "function": "secure_input",
+        "description": "Validates and secures user input"
+    },
+    "validate_youtube_metadata": {
+        "module": "security",
+        "function": "validate_youtube_metadata",
+        "description": "Validates metadata before publishing"
     }
 }
 
@@ -194,184 +110,176 @@ MCP_TOOLS = {
 def use_tool(tool_name, **kwargs):
     """
     MCP style tool caller.
-    Any module can be called through here.
-    New tools just need to be registered above.
+    All modules called through here.
     """
     if tool_name not in MCP_TOOLS:
-        print(f"Tool {tool_name} not found in registry.")
+        print(f"Tool {tool_name} not found.")
         return None
 
     tool = MCP_TOOLS[tool_name]
 
     try:
-        if tool["module"] == "main":
-            func = globals()[tool["function"]]
-        else:
-            module = importlib.import_module(tool["module"])
-            func = getattr(module, tool["function"])
-
-        log_action(f"TOOL_CALL:{tool_name}", "EXECUTED")
+        module = importlib.import_module(tool["module"])
+        func = getattr(module, tool["function"])
+        trace_agent_action(
+            f"tool_call_{tool_name}", tool_name, "called"
+        )
         return func(**kwargs)
 
     except Exception as e:
-        log_action(f"TOOL_CALL:{tool_name}", "FAILED", str(e))
+        trace_agent_action(
+            f"tool_call_{tool_name}", tool_name, f"failed: {e}"
+        )
         print(f"Tool {tool_name} failed: {e}")
         return None
 
 
 # ─────────────────────────────────────────────
-# DAILY INTELLIGENCE REPORT
-# Runs all modules and compiles one master
-# report for the day.
+# HUMAN APPROVAL + SAFETY GATE
 # ─────────────────────────────────────────────
 
-def generate_daily_report():
+def human_approval_gate(action_name, details):
     """
-    Master daily report combining all modules.
-    Run this once per day for full channel intelligence.
+    Pauses execution and waits for your approval.
+    Nothing goes live without your confirmation.
     """
+    print("\n" + "=" * 55)
+    print("HUMAN APPROVAL + SAFETY GATE")
     print("=" * 55)
-    print("ReachIQ AI — Daily Intelligence Report")
-    print(f"Date: {datetime.date.today()}")
+    print(f"Action: {action_name}")
+    print(f"Details: {details}")
     print("=" * 55)
 
-    log_action("DAILY_REPORT", "STARTED")
-    report_data = {}
+    while True:
+        choice = input("Approve? (y/n): ").strip().lower()
+        if choice == "y":
+            log_action(action_name, "APPROVED", details)
+            print("Approved.")
+            return True
+        elif choice == "n":
+            log_action(action_name, "REJECTED", details)
+            print("Rejected.")
+            return False
+        else:
+            print("Enter y or n.")
 
-    # Fetch videos
-    print("\nFetching your channel videos...")
-    videos = use_tool("get_videos", max_results=5)
-    if not videos:
-        print("Could not fetch videos. Check YouTube API.")
-        return
 
-    print(f"Found {len(videos)} videos.")
+# ─────────────────────────────────────────────
+# VISION ROUTER — Thumbnail Analysis
+# ─────────────────────────────────────────────
 
-    for video in videos[:3]:
-        print(f"\n{'=' * 55}")
-        print(f"Processing: {video['title'][:50]}")
-        print(f"{'=' * 55}")
+def analyze_thumbnail(image_path):
+    """
+    Routes thumbnail to Ollama moondream.
+    Lightweight vision model for thumbnail scoring.
+    """
+    try:
+        import ollama
+        print("Analyzing thumbnail with moondream...")
 
-        video_data = {"title": video["title"], "url": video["url"]}
-
-        # Get stats
-        stats = use_tool("get_video_stats",
-                         video_id=video["video_id"])
-        if stats:
-            video_data["stats"] = stats
-            print(f"Views: {stats.get('views', 0)}")
-            print(f"Likes: {stats.get('likes', 0)}")
-
-        time.sleep(2)
-
-        # Extract keywords
-        print("Extracting keywords...")
-        keywords = use_tool("extract_keywords",
-                            video_title=video["title"])
-        if keywords and isinstance(keywords, dict):
-            primary = keywords.get("primary_keywords", [])
-            video_data["keywords"] = primary
-            print(f"Primary Keywords: {', '.join(primary[:3])}")
-
-        time.sleep(2)
-
-        # Generate metadata update
-        print("Generating metadata suggestions...")
-        metadata = use_tool(
-            "generate_updated_metadata",
-            video_title=video["title"],
-            current_description="",
-            current_tags="",
-            analytics_data=stats if isinstance(stats, dict) else {}
+        response = ollama.chat(
+            model="moondream",
+            messages=[{
+                "role": "user",
+                "content": """Analyze this YouTube thumbnail.
+Return ONLY valid JSON, no extra text.
+FORMAT:
+{
+  "visibility_score": 0,
+  "text_readability": "",
+  "emotional_impact": "",
+  "color_contrast": "",
+  "suggested_improvements": [],
+  "ctr_prediction": ""
+}""",
+                "images": [image_path]
+            }]
         )
+        result = response["message"]["content"]
+        try:
+            clean = result.strip()
+            if "```" in clean:
+                clean = clean.split("```")[1]
+                if clean.startswith("json"):
+                    clean = clean[4:]
+            return json.loads(clean)
+        except:
+            return result
 
-        if metadata and isinstance(metadata, dict):
-            video_data["metadata"] = metadata
-            print(f"Suggested Title: "
-                  f"{metadata.get('updated_title', '')}")
+    except Exception as e:
+        print(f"Thumbnail analysis failed: {e}")
+        print("Run: ollama pull moondream")
+        return None
 
-            # Human approval before anything gets saved
-            if human_approval_gate(
-                "METADATA UPDATE",
-                f"Update metadata for: {video['title']}"
-            ):
-                print("Metadata update approved. Saved to report.")
-            else:
-                print("Metadata update skipped.")
 
-        time.sleep(2)
+# ─────────────────────────────────────────────
+# ACTION LOGGER
+# ─────────────────────────────────────────────
 
-        # Generate social posts
-        print("Generating social media posts...")
-        kw_list = video_data.get("keywords", ["AI"])
-        posts = use_tool(
-            "generate_platform_posts",
-            video_title=video["title"],
-            video_url=video["url"],
-            keywords=kw_list
-        )
-
-        if posts and isinstance(posts, dict):
-            video_data["posts"] = posts
-            print("Social posts generated.")
-
-            # Human approval before posting
-            if human_approval_gate(
-                "SOCIAL MEDIA POST",
-                f"Post content for: {video['title']}"
-            ):
-                print("Social posts approved. Ready to publish.")
-            else:
-                print("Social posts skipped.")
-
-        report_data[video["video_id"]] = video_data
-        time.sleep(3)
-
-    # Save master report
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = os.path.join(
-        "reports",
-        f"daily_intelligence_report_{timestamp}.json"
+def log_action(action, status, details=""):
+    log_file = os.path.join(
+        "logs",
+        f"reachiq_log_{datetime.date.today()}.txt"
     )
-
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(report_data, f, indent=2, ensure_ascii=False)
-
-    print(f"\n{'=' * 55}")
-    print(f"Daily report saved: {filename}")
-    log_action("DAILY_REPORT", "COMPLETED", filename)
-    print(f"{'=' * 55}")
+    timestamp = datetime.datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(f"[{timestamp}] {status} | {action}\n")
+        if details:
+            f.write(f"  Details: {str(details)[:200]}\n")
 
 
 # ─────────────────────────────────────────────
-# MAIN MENU
+# MENU
 # ─────────────────────────────────────────────
 
 def render_menu():
     os.system('cls' if os.name == 'nt' else 'clear')
     print("=" * 55)
-    print("  ReachIQ AI — MAIN CONTROL PANEL")
+    print("  ReachIQ AI — MAIN CONTROL PANEL v2.0")
     print(f"  {datetime.date.today()}")
     print("=" * 55)
     print("  1. Pre-Upload Analysis")
     print("  2. Post-Upload Monitoring")
     print("  3. Daily Intelligence Report")
     print("  4. Thumbnail Analysis (Vision)")
-    print("  5. List Available Tools (MCP Registry)")
-    print("  6. View Today's Action Log")
-    print("  7. Run System Diagnostics")
-    print("  8. Shutdown")
+    print("  5. Channel Memory and Patterns")
+    print("  6. List MCP Tools")
+    print("  7. View Action Log")
+    print("  8. Security Report")
+    print("  9. System Diagnostics")
+    print("  10. Shutdown")
     print("=" * 55)
 
+
+# ─────────────────────────────────────────────
+# OPTION HANDLERS
+# ─────────────────────────────────────────────
 
 def handle_pre_upload_main():
     print("\nPRE-UPLOAD ANALYSIS")
     print("=" * 55)
-    title = input("Video Title: ").strip()
+
+    raw_title = input("Video Title: ").strip()
+    title = secure_input(raw_title, "title")
+    if not title:
+        print("Title blocked by security. Please try again.")
+        return
+
     description = input("Description: ").strip()
     tags = input("Tags (comma separated): ").strip()
     script = input("First 3 lines of script "
                    "(or Enter to skip): ").strip()
+
+    # Validate metadata
+    validation = validate_youtube_metadata(
+        title, description, tags.split(",")
+    )
+    if not validation.get("is_valid"):
+        print("Metadata issues found:")
+        for issue in validation.get("issues", []):
+            print(f"  - {issue}")
 
     print("\nScoring content...")
     score = use_tool("score_video",
@@ -394,28 +302,29 @@ def handle_pre_upload_main():
         script=script if script else None
     )
     if analysis and isinstance(analysis, dict):
-        print(f"Upload Ready: {analysis.get('upload_ready', False)}")
+        print(f"Upload Ready: "
+              f"{analysis.get('upload_ready', False)}")
         print(f"Hook: {analysis.get('hook_suggestion', '')}")
-        print(f"Thumbnail Text: {analysis.get('thumbnail_text', '')}")
+        print(f"Thumbnail: {analysis.get('thumbnail_text', '')}")
         print("\nTop 3 Actions:")
         for action in analysis.get("top_3_actions", []):
             print(f"  - {action}")
 
     time.sleep(2)
 
-    print("\nExtracting keywords...")
-    keywords = use_tool("extract_keywords",
-                        video_title=title,
-                        video_description=description)
-    if keywords and isinstance(keywords, dict):
-        print("Primary Keywords: " +
-              ", ".join(keywords.get("primary_keywords", [])))
+    # Check memory for smart suggestions
+    print("\nChecking channel memory for smart suggestions...")
+    suggestions = use_tool("get_smart_suggestions",
+                           context=title)
+    if suggestions and isinstance(suggestions, dict):
+        print("Smart suggestions from memory:")
+        for s in suggestions.get("smart_suggestions", [])[:3]:
+            print(f"  - {s}")
 
     # Save report
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = os.path.join(
-        "reports",
-        f"pre_upload_{timestamp}.txt"
+        "reports", f"pre_upload_{timestamp}.txt"
     )
     with open(filename, "w", encoding="utf-8") as f:
         f.write("ReachIQ AI — Pre Upload Report\n")
@@ -424,49 +333,144 @@ def handle_pre_upload_main():
         if score and isinstance(score, dict):
             f.write(f"SCORE: {score.get('total_score', 0)}/100\n")
             f.write(f"GRADE: {score.get('grade', '')}\n")
-            f.write(f"PRIORITY FIX: {score.get('priority_fix', '')}\n\n")
+            f.write(f"PRIORITY FIX: "
+                    f"{score.get('priority_fix', '')}\n\n")
         if analysis and isinstance(analysis, dict):
-            f.write(f"HOOK: {analysis.get('hook_suggestion', '')}\n")
-            f.write(f"THUMBNAIL: {analysis.get('thumbnail_text', '')}\n")
-            f.write("TOP 3 ACTIONS:\n")
-            for a in analysis.get("top_3_actions", []):
-                f.write(f"  - {a}\n")
+            f.write(f"HOOK: "
+                    f"{analysis.get('hook_suggestion', '')}\n")
+            f.write(f"THUMBNAIL: "
+                    f"{analysis.get('thumbnail_text', '')}\n")
 
     print(f"\nReport saved: {filename}")
     log_action("PRE_UPLOAD_ANALYSIS", "COMPLETED", title)
 
 
 def handle_thumbnail_analysis():
-    print("\nTHUMBNAIL ANALYSIS (Vision)")
+    print("\nTHUMBNAIL ANALYSIS")
     print("=" * 55)
-    print("Place your thumbnail image in the project folder.")
-    image_path = input("Enter image filename "
+    print("Place thumbnail image in project folder.")
+    image_path = input("Image filename "
                        "(e.g. thumbnail.jpg): ").strip()
 
     if not os.path.exists(image_path):
         print(f"File not found: {image_path}")
-        print("Make sure the image is in your project folder.")
         return
 
-    print("\nAnalyzing thumbnail with Ollama moondream...")
     result = analyze_thumbnail(image_path)
-
     if result and isinstance(result, dict):
-        print(f"\nVisibility Score: "
+        print(f"\nVisibility: "
               f"{result.get('visibility_score', 0)}/10")
-        print(f"Text Readability: "
+        print(f"Readability: "
               f"{result.get('text_readability', '')}")
-        print(f"Emotional Impact: "
-              f"{result.get('emotional_impact', '')}")
         print(f"CTR Prediction: "
               f"{result.get('ctr_prediction', '')}")
-        print("\nSuggested Improvements:")
+        print("\nImprovements:")
         for imp in result.get("suggested_improvements", []):
             print(f"  - {imp}")
     elif result:
         print(result)
 
     log_action("THUMBNAIL_ANALYSIS", "COMPLETED", image_path)
+
+
+def handle_memory_patterns():
+    print("\nCHANNEL MEMORY AND PATTERNS")
+    print("=" * 55)
+
+    print("\n1. Memory Statistics:")
+    view_memory_stats()
+
+    print("\n2. Channel Patterns from History:")
+    patterns = use_tool("get_channel_patterns")
+    if patterns and isinstance(patterns, dict):
+        print(f"\nBest Topics: "
+              f"{patterns.get('best_performing_topics', [])}")
+        print(f"Recommended Next: "
+              f"{patterns.get('recommended_next_topics', [])}")
+        print(f"Key Learning: "
+              f"{patterns.get('key_learning', '')}")
+    else:
+        print("Not enough data yet. "
+              "Run more videos through the agent to build memory.")
+
+    log_action("MEMORY_PATTERNS", "VIEWED")
+
+
+def generate_daily_report():
+    print("=" * 55)
+    print("ReachIQ AI — Daily Intelligence Report")
+    print(f"Date: {datetime.date.today()}")
+    print("=" * 55)
+
+    log_action("DAILY_REPORT", "STARTED")
+
+    videos = use_tool("get_videos", max_results=5)
+    if not videos:
+        print("Could not fetch videos.")
+        return
+
+    print(f"Found {len(videos)} videos.")
+
+    for video in videos[:3]:
+        print(f"\nProcessing: {video['title'][:50]}")
+
+        stats = use_tool("get_video_stats",
+                         video_id=video["video_id"])
+        if stats and isinstance(stats, dict):
+            print(f"Views: {stats.get('views', 0)}")
+
+        time.sleep(2)
+
+        keywords = use_tool("extract_keywords",
+                            video_title=video["title"])
+        if keywords and isinstance(keywords, dict):
+            primary = keywords.get("primary_keywords", [])
+            print(f"Keywords: {', '.join(primary[:3])}")
+
+        time.sleep(2)
+
+        metadata = use_tool(
+            "generate_updated_metadata",
+            video_title=video["title"],
+            current_description="",
+            current_tags="",
+            analytics_data=stats if isinstance(
+                stats, dict) else {}
+        )
+
+        if metadata and isinstance(metadata, dict):
+            print(f"Suggested Title: "
+                  f"{metadata.get('updated_title', '')}")
+
+            if human_approval_gate(
+                "METADATA UPDATE",
+                f"Update: {video['title'][:40]}"
+            ):
+                # Store in memory
+                use_tool(
+                    "store_video_performance",
+                    video_id=video["video_id"],
+                    title=video["title"],
+                    stats=stats if isinstance(stats, dict) else {},
+                    suggestions=metadata if isinstance(
+                        metadata, dict) else {}
+                )
+                print("Stored in memory.")
+
+        time.sleep(2)
+
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = os.path.join(
+        "reports",
+        f"daily_report_{timestamp}.json"
+    )
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump({"date": str(datetime.date.today()),
+                   "videos_processed": len(videos[:3])},
+                  f, indent=2)
+
+    print(f"\nDaily report saved: {filename}")
+    log_action("DAILY_REPORT", "COMPLETED")
 
 
 def handle_list_tools():
@@ -490,7 +494,17 @@ def handle_view_log():
         with open(log_file, "r", encoding="utf-8") as f:
             print(f.read())
     else:
-        print("No actions logged today yet.")
+        print("No actions logged today.")
+
+
+def handle_security_report():
+    print("\nSECURITY REPORT")
+    print("=" * 55)
+    report = get_security_report()
+    if isinstance(report, dict):
+        print(json.dumps(report, indent=2))
+    else:
+        print(report)
 
 
 def handle_diagnostics():
@@ -500,28 +514,39 @@ def handle_diagnostics():
         "config", "brain", "youtube_api",
         "analyzer", "scorer", "monitor",
         "metadata_updater", "keyword_tracker",
-        "social_media", "automation"
+        "social_media", "automation",
+        "memory", "observability", "security"
     ]
     all_ok = True
     for mod in modules:
         try:
             importlib.import_module(mod)
-            print(f"  OK  {mod}.py")
+            print(f"  OK    {mod}.py")
         except Exception as e:
             print(f"  FAIL  {mod}.py — {e}")
             all_ok = False
 
     print()
     if all_ok:
-        print("All modules loaded successfully.")
+        print("All 13 modules loaded successfully.")
+        print("ReachIQ AI is fully operational.")
     else:
-        print("Some modules have issues. Check above.")
+        print("Some modules have issues.")
+
+    # Observability summary
+    print("\nObservability Summary:")
+    summary = get_daily_performance_summary()
+    if isinstance(summary, dict):
+        print(f"  Actions today: "
+              f"{summary.get('total_actions', 0)}")
+        print(f"  Success rate: "
+              f"{summary.get('success_rate', '0%')}")
 
     log_action("DIAGNOSTICS", "COMPLETED")
 
 
 # ─────────────────────────────────────────────
-# START REACHIQ AI
+# MAIN START
 # ─────────────────────────────────────────────
 
 def start():
@@ -531,7 +556,7 @@ def start():
     while True:
         render_menu()
         try:
-            choice = input("\nSelect option (1-8): ").strip()
+            choice = input("\nSelect option (1-10): ").strip()
 
             if choice == "1":
                 handle_pre_upload_main()
@@ -551,28 +576,36 @@ def start():
                 input("\nPress Enter to return to menu...")
 
             elif choice == "5":
-                handle_list_tools()
+                handle_memory_patterns()
                 input("\nPress Enter to return to menu...")
 
             elif choice == "6":
-                handle_view_log()
+                handle_list_tools()
                 input("\nPress Enter to return to menu...")
 
             elif choice == "7":
-                handle_diagnostics()
+                handle_view_log()
                 input("\nPress Enter to return to menu...")
 
             elif choice == "8":
+                handle_security_report()
+                input("\nPress Enter to return to menu...")
+
+            elif choice == "9":
+                handle_diagnostics()
+                input("\nPress Enter to return to menu...")
+
+            elif choice == "10":
                 print("\nShutting down ReachIQ AI. Goodbye.")
                 log_action("SYSTEM", "SHUTDOWN")
                 break
 
             else:
-                print("Invalid option. Select 1-8.")
+                print("Invalid option. Select 1-10.")
                 time.sleep(1)
 
         except KeyboardInterrupt:
-            print("\n\nSession ended by operator.")
+            print("\n\nSession ended.")
             log_action("SYSTEM", "INTERRUPTED")
             break
         except Exception as e:
