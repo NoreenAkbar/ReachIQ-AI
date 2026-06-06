@@ -96,7 +96,7 @@ Copyright (C) 2026 Noreen Akbar
 
 This project is licensed under AGPL-3.0.
 Commercial use requires explicit written permission from the author.
-Contact: noreenakbar438@gmail.com
+Contact: noreenakbar06@gmail.com
 
 ---
 
