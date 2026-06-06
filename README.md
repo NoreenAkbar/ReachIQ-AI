@@ -1,142 +1,109 @@
+# ReachIQ AI 🚀
+### Generative Growth as a Service
+
+An intelligent multi-agent YouTube growth optimization system that analyzes, monitors, and distributes your content automatically.
+
+Built by **Noreen Akbar** | AI Researcher & Agent Developer
+
+---
+
+## What ReachIQ AI Does
+
+ReachIQ AI is a fully automated YouTube growth agent that works across the entire content lifecycle:
+
+- **Pre-Upload** — Scores your title, script, tags and thumbnail before you upload. Tells you exactly what to fix.
+- **Post-Upload** — Monitors real YouTube Analytics daily and suggests metadata improvements automatically.
+- **Distribution** — Finds relevant Reddit, Quora, LinkedIn and Facebook discussions and drafts ready-to-post comments with your video link.
+- **Competition Intelligence** — Analyzes top performing videos in your niche and tells you exactly how to outperform them.
+- **Memory & Learning** — Learns from your channel's performance history and gives smarter suggestions over time.
+
+---
+
+## Architecture
+
+ReachIQ AI is built as a multi-agent system with 14 specialized modules:
+
+| Module | Purpose |
+|--------|---------|
+| brain.py | AI brain with Groq Llama 3.3 70B, Ollama fallback |
+| analyzer.py | Pre-upload content analysis |
+| scorer.py | 6-dimension video scoring system |
+| monitor.py | Real YouTube Analytics tracking |
+| metadata_updater.py | Auto metadata optimization |
+| keyword_tracker.py | SEO and competition analysis |
+| social_media.py | Multi-platform post generation |
+| memory.py | Mem0 + Qdrant learning system |
+| observability.py | Langfuse tracing and logging |
+| security.py | Input validation and guardrails |
+| automation.py | Pipeline orchestrator |
+| main.py | Master control with MCP registry |
+
+---
+
+## Tech Stack (100% Free)
+
+- **AI Brain** — Groq Llama 3.3 70B (primary), Ollama llama3.2:1b (fallback)
+- **Agent Framework** — LangGraph compatible architecture
+- **Memory** — Mem0 self-hosted + Qdrant vector database
+- **Observability** — Langfuse tracing
+- **Security** — Custom guardrails with prompt injection protection
+- **YouTube** — YouTube Data API v3 + YouTube Analytics API
+- **Automation** — n8n self-hosted (coming)
+
+---
+
+## Setup
+
+**Requirements:**
+- Python 3.14+
+- Ollama installed locally
+- Groq API key (free at console.groq.com)
+- YouTube Data API key (free at console.cloud.google.com)
+
+**Installation:**
+
+```bash
+git clone https://github.com/NoreenAkbar/ReachIQ-AI.git
+cd ReachIQ-AI
+pip install -r requirements.txt
+```
+
+**Configure .env:**
+**Run:**
+
+```bash
+python main.py
+```
+
+---
+
+## Features
+
+- Human Approval Gate before any content goes live
+- MCP Tool Registry for modular agent expansion
+- Real YouTube Analytics integration (OAuth)
+- Competitor video analysis
+- Platform-specific social media post generation
+- Daily intelligence reports saved as files
+- Security layer blocking prompt injection and harmful content
+- Full action logging and observability
+
+---
+
 ## License
+
+Copyright (C) 2026 Noreen Akbar
+
 This project is licensed under AGPL-3.0.
 Commercial use requires explicit written permission from the author.
-Contact: your_email_here
-# ReachIQ-AI
-Agentic AI YouTube Growth Assistant built using LLMs, AI Agents, Python, and API integrations
+Contact: noreenakbar438@gmail.com
 
-## Overview
-ReachIQ AI is an Agentic AI-powered YouTube Growth Assistant currently under active development. The project is designed to help content creators automate research, content evaluation, optimization, and performance monitoring through a coordinated system of AI-driven modules.
+---
 
-The system combines Large Language Models (LLMs), YouTube analytics, workflow automation, and intelligent decision-making to support data-driven content growth strategies.
+## Project Status
 
-Rather than relying on a single AI model, ReachIQ AI uses a modular architecture where specialized components perform focused tasks such as content analysis, scoring, optimization, keyword tracking, and post-upload monitoring.
-## Problem Statement
-Growing a YouTube channel requires significant time and effort across multiple activities, including:
+Currently in active development as part of:
+- Band of Agents Hackathon (lablab.ai) — June 2026
+- AMD Developer Hackathon ACT II — July 2026
 
-Content research
-Competitor analysis
-Keyword discovery
-Title and metadata optimization
-Performance monitoring
-Content improvement recommendations
-
-Most creators perform these tasks manually or use disconnected tools.
-
-ReachIQ AI aims to unify these activities into a single intelligent system capable of assisting creators before and after publishing content while providing actionable growth insights.
-## Current Features
-AI Brain
-Groq-powered reasoning engine (Primary)
-Ollama local model fallback
-Modular decision-making architecture
-Content Intelligence
-Pre-upload content analysis
-Content scoring and evaluation
-Keyword tracking and monitoring
-Metadata optimization
-YouTube Integration
-YouTube API connectivity
-Performance data retrieval
-Video and channel analysis
-Growth Optimization
-Performance optimization workflows
-Daily post-upload monitoring
-Automated improvement recommendations
-Social Media Support
-Social media integration framework
-Cross-platform growth support
-## Architecture
-The system follows an Agentic AI architecture where specialized modules collaborate to analyze content, evaluate performance, generate recommendations, and support creator decision-making.
-
-Current architecture includes:
-
-YouTube API Integration
-AI Brain (Groq + Ollama)
-Pre-Upload Analyzer
-Content Scorer
-Keyword Tracker
-Performance Optimizer
-Post-Upload Monitor
-Metadata Updater
-Social Media Module
-
-Future architecture phases include workflow automation, Retrieval-Augmented Generation (RAG) Video, memory systems, and advanced orchestration capabilities.
-
-Architecture diagram available in the repository assets folder.
-## Technology Stack
-Programming
-Python
-AI & LLMs
-Groq
-Ollama
-APIs
-YouTube Data API
-Planned Technologies
-RAG Frameworks
-Vector Databases
-Workflow Automation Tools
-## Development Status
-Completed
-
-✅ config.py
-
-✅ brain.py (Groq Primary, Ollama Fallback)
-
-✅ youtube_api.py
-
-✅ analyzer.py (Pre-Upload Analysis)
-
-✅ scorer.py (Pre-Upload Scoring)
-
-✅ performance_optimizer.py
-
-✅ monitor.py (Post-Upload Tracking)
-
-✅ metadata_updater.py
-
-✅ keyword_tracker.py
-
-✅ social_media.py
-
-In Progress
-
-🚧 System Integration
-
-🚧 Workflow Coordination
-
-🚧 Architecture Refinement
-
-Next Development Session
-
-📌 automation.py
-
-📌 main.py
-
-📌 Architecture Diagram Update (Groq Integration)
-
-## Roadmap
-Phase 1 — Core MVP
-AI Brain
-YouTube API Integration
-Content Analysis
-Content Scoring
-Keyword Tracking
-Monitoring System
-Phase 2 — Workflow Automation
-Automation Engine
-Central Orchestration
-End-to-End Workflow Execution
-Phase 3 — Intelligent Memory
-RAG Integration
-Vector Database Layer
-Knowledge Storage and Retrieval
-Phase 4 — Scale & Expansion
-Multi-platform Publishing
-Advanced Analytics
-Enhanced Recommendation Engine
-## Author
-Noreen Akbar
-
-PhD Researcher | AI & Machine Learning Practitioner
-
-Currently building ReachIQ AI as an exploration of Agentic AI systems, LLM-powered automation, and intelligent content optimization workflows.
+*Built with zero budget, maximum ambition.*
