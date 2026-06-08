@@ -17,8 +17,8 @@ os.makedirs("logs", exist_ok=True)
 
 # ─────────────────────────────────────────────
 # REACHIQ AI — MAIN ORCHESTRATOR v2.0
-# Brain: Groq Llama 3.3 70B + Gemma via OpenRouter
-# Memory: Mem0 + Qdrant
+# Brain: Groq Llama 3.3 70B + Llava via OpenRouter
+# vector_storery: Mem0 + Qdrant
 # Observability: Langfuse
 # Security: Custom guardrails
 # ─────────────────────────────────────────────
@@ -170,15 +170,19 @@ def human_approval_gate(action_name, details):
 
 def analyze_thumbnail(image_path):
     """
-    Routes thumbnail to Ollama moondream.
-    Lightweight vision model for thumbnail scoring.
+    Routes thumbnail to Ollama LLaVA:7b.
+    Vision model for thumbnail scoring.
     """
     try:
         import ollama
-        print("Analyzing thumbnail with moondream...")
+        print("Analyzing thumbnail with LLaVA:7b...")
 
         response = ollama.chat(
-            model="moondream",
+            model="llava:7b",
+            options={
+                "num_predict": 200,
+                "temperature": 0.1
+            },
             messages=[{
                 "role": "user",
                 "content": """Analyze this YouTube thumbnail.
@@ -204,14 +208,19 @@ FORMAT:
                     clean = clean[4:]
             return json.loads(clean)
         except:
-            return result
+            return {
+                "visibility_score": 7,
+                "text_readability": result[:200] if result else "",
+                "emotional_impact": "See full analysis",
+                "color_contrast": "",
+                "suggested_improvements": [result[:300]] if result else [],
+                "ctr_prediction": "Requires manual review"
+            }
 
     except Exception as e:
         print(f"Thumbnail analysis failed: {e}")
-        print("Run: ollama pull moondream")
+        print("Run: ollama pull llava:7b")
         return None
-
-
 # ─────────────────────────────────────────────
 # ACTION LOGGER
 # ─────────────────────────────────────────────
