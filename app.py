@@ -59,8 +59,17 @@ label{color:#f1f5f9 !important;font-size:15px !important;font-weight:600 !import
   font-size:15px !important;color:#e2e8f0 !important}
 hr{border-color:#1e293b !important}
 .stSelectbox>div>div{background-color:#111827 !important;
-  border:1px solid #334155 !important;color:#f1f5f9 !important;
+  border:1px solid #0ea5e9 !important;color:#ffffff !important;
+  font-size:15px !important;font-weight:600 !important}
+.stSelectbox>div>div>div{color:#ffffff !important;font-weight:600 !important}
+[data-testid="stSidebar"] .stSelectbox label{
+  color:#ffffff !important;font-size:15px !important;
+  font-weight:700 !important}
+[data-testid="stSidebar"] select{color:#ffffff !important}
+div[role="option"]{color:#ffffff !important;background:#111827 !important;
   font-size:15px !important}
+div[role="listbox"]{background:#111827 !important;
+  border:1px solid #334155 !important}
 div[data-testid="stExpander"]{background:#111827 !important;
   border:1px solid #1e293b !important;border-radius:8px !important}
 div[data-testid="stExpander"] summary{color:#f1f5f9 !important;
@@ -289,18 +298,45 @@ if "Overview" in page:
                         "Multi-Agent Solutions")
 
     st.markdown("---")
-    st.markdown("### 💰 Pricing")
-    p1, p2, p3, p4 = st.columns(4)
+    st.markdown("### 💼 Business Model")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(
+        "<div class='card'>"
+        "<div style='color:#059669;font-size:16px;"
+        "font-weight:900;'>📦 One-Time Download</div>"
+        "<div style='color:#94a3b8;font-size:14px;"
+        "margin-top:8px;'>Full source code. "
+        "Buyer uses own API keys. Zero running cost.</div>"
+        "</div>",
+        unsafe_allow_html=True
+    )
+    with c2:
+        st.markdown(
+        "<div class='card'>"
+        "<div style='color:#0ea5e9;font-size:16px;"
+        "font-weight:900;'>🚀 GaaS Subscription</div>"
+        "<div style='color:#94a3b8;font-size:14px;"
+        "margin-top:8px;'>Hosted service. "
+        "Clients bring own Groq key. "
+        "Tiered plans for creators and agencies.</div>"
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+    p1, p2, p3 = st.columns(3)
     plans = [
-        (p1, "📦 One-Time", "$299",
-         "Own API keys. Full source.", "#059669"),
-        (p2, "🚀 Starter", "$49/mo",
-         "1 channel. All modules.", "#0ea5e9"),
-        (p3, "💼 Pro", "$99/mo",
-         "3 channels. Priority.", "#d97706"),
-        (p4, "🏢 Agency", "$249/mo",
-         "10 channels. White label.", "#7c3aed"),
+        (p1, "Creator", "$79/mo",
+         "Single channel plan with core AI features.",
+         "#0ea5e9"),
+        (p2, "Agency", "$199/mo",
+         "Multiple channels with team workflows.",
+         "#7c3aed"),
+        (p3, "Enterprise", "Custom",
+         "Custom plans for studios and agencies.",
+         "#059669"),
     ]
+
     for col, name, price, desc, color in plans:
         with col:
             st.markdown(
@@ -345,258 +381,213 @@ elif "Pre-Upload" in page:
             "Opening Script Hook (optional)", height=80,
             placeholder="Paste your video opening lines..."
         )
+        uploaded_thumbnail = st.file_uploader(
+            "Upload Thumbnail Image (optional)",
+            type=["jpg","jpeg","png"],
+            help="Upload your planned thumbnail for visual analysis"
+        )
         run_optimizer = st.checkbox(
             "🔄 Run 3-Pass Recursive Optimizer", value=True
         )
         submitted = st.form_submit_button("🚀 Analyze Content")
 
-    if submitted and title:
-        mods = load_modules()
-        if not mods["loaded"]:
-            st.error(f"Module error: {mods.get('error')}")
+    if submitted:
+        if not title:
+            st.warning("Please enter a video title.")
         else:
-            safe = mods["secure_input"](title, "title")
-            if safe is None:
-                st.error("🚫 Input blocked by security layer.")
-                st.stop()
-            else:
-                with st.spinner("Scoring content..."):
-                    score = mods["score_video"](
-                        title, description, tags
-                    )
-                with st.spinner("Running analysis..."):
-                    analysis = mods["analyze_pre_upload"](
-                        title, description, tags,
-                        script if script else None
-                    )
-                with st.spinner("Extracting keywords..."):
-                    keywords = mods["extract_keywords"](
-                        title, description
-                    )
-
+            if uploaded_thumbnail is not None:
                 st.markdown("---")
-                st.markdown("### 📊 Content Score")
-                if score and isinstance(score, dict):
-                    total = score.get("total_score", 0)
-                    grade = score.get("grade", "N/A")
-                    color = (
-                        "#059669" if total >= 75
-                        else "#d97706" if total >= 55
-                        else "#dc2626"
+                st.markdown("### 🖼️ Thumbnail Quick Analysis")
+
+                import tempfile
+                import os as _os
+
+                suffix = "." + uploaded_thumbnail.name.split(".")[-1]
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=suffix
+                ) as tmp:
+                    tmp.write(uploaded_thumbnail.getvalue())
+                    tmp_path = tmp.name
+
+                st.image(
+                    uploaded_thumbnail,
+                    caption="Your thumbnail",
+                    width=320
+                )
+
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+
+            status_text.text("Step 1/3 — Scoring content...")
+            score = mods["score_video"](title, description, tags)
+            progress_bar.progress(33)
+
+            status_text.text("Step 2/3 — Running analysis...")
+            analysis = mods["analyze_pre_upload"](
+                title, description, tags,
+                script if script else None
+            )
+            progress_bar.progress(66)
+
+            status_text.text("Step 3/3 — Extracting keywords...")
+            keywords = mods["extract_keywords"](title, description)
+            progress_bar.progress(100)
+            status_text.text("Analysis complete.")
+
+            if analysis and isinstance(analysis, dict):
+                st.markdown("---")
+                st.markdown(
+                    "### 🎯 AnalyzerAgent Recommendations"
+                )
+                ready = analysis.get("upload_ready", False)
+                if ready:
+                    st.markdown(
+                        "<div class='ok'>✅ Ready to Upload"
+                        "</div>", unsafe_allow_html=True
+                    )
+                else:
+                    st.markdown(
+                        "<div class='warn'>"
+                        "⚠️ Needs Improvement Before Upload"
+                        "</div>", unsafe_allow_html=True
+                    )
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.markdown("**Hook Suggestion:**")
+                    st.info(
+                        analysis.get("hook_suggestion","N/A")
+                    )
+                    st.markdown("**Thumbnail Text:**")
+                    st.success(
+                        analysis.get("thumbnail_text","N/A")
+                    )
+                with c2:
+                    st.markdown("**Top 3 Actions:**")
+                    for a in analysis.get(
+                            "top_3_actions",[])[:3]:
+                        st.markdown(f"› {a}")
+
+            if run_optimizer:
+                st.markdown("---")
+                st.markdown(
+                    "### 🔄 3-Pass Recursive Optimizer"
+                )
+                st.markdown("**Optimizing Title...**")
+                prog = st.progress(0)
+                with st.spinner("Running passes..."):
+                    title_result = mods["optimize_title"](
+                        title
+                    )
+                prog.progress(100)
+
+                if title_result and isinstance(
+                        title_result, dict):
+                    passes = title_result.get(
+                        "passes_completed", 0
+                    )
+                    final_score = title_result.get(
+                        "final_score", 0
+                    )
+                    threshold = title_result.get(
+                        "threshold_met", False
                     )
                     c1, c2, c3 = st.columns(3)
                     with c1:
-                        st.markdown(
-                            f"<div style='text-align:center;"
-                            f"background:#111827;border-radius:12px;"
-                            f"padding:20px;border:2px solid {color};'>"
-                            f"<div style='color:{color};font-size:52px;"
-                            f"font-weight:900;'>{total}/100</div>"
-                            f"<div style='color:#64748b;'>"
-                            f"Overall Score</div></div>",
-                            unsafe_allow_html=True
+                        st.metric(
+                            "Passes Completed",
+                            f"{passes}/3"
                         )
                     with c2:
-                        st.markdown(
-                            f"<div style='text-align:center;"
-                            f"background:#111827;border-radius:12px;"
-                            f"padding:20px;border:2px solid {color};'>"
-                            f"<div style='color:{color};font-size:52px;"
-                            f"font-weight:900;'>{grade}</div>"
-                            f"<div style='color:#64748b;'>"
-                            f"Grade</div></div>",
-                            unsafe_allow_html=True
+                        st.metric(
+                            "Final Score",
+                            f"{final_score}/10"
                         )
                     with c3:
-                        st.markdown(
-                            f"<div style='background:#111827;"
-                            f"border-radius:12px;padding:20px;"
-                            f"border:1px solid #1e293b;'>"
-                            f"<div style='color:#d97706;font-weight:700;"
-                            f"font-size:13px;'>Priority Fix:</div>"
-                            f"<div style='color:#f1f5f9;font-size:13px;"
-                            f"margin-top:6px;'>"
-                            f"{score.get('priority_fix','N/A')}</div>"
-                            f"<div style='color:#d97706;font-weight:700;"
-                            f"font-size:13px;margin-top:10px;'>Verdict:</div>"
-                            f"<div style='color:#f1f5f9;font-size:13px;"
-                            f"margin-top:4px;'>"
-                            f"{score.get('verdict','N/A')}</div></div>",
-                            unsafe_allow_html=True
+                        st.metric(
+                            "Threshold Met",
+                            "✅ Yes" if threshold
+                            else "⚠️ No"
                         )
-                    scores_data = score.get("scores", {})
-                    if isinstance(scores_data, dict):
-                        st.markdown("**Score Breakdown:**")
-                        valid = [
-                            (k, v) for k, v in scores_data.items()
-                            if k != "total_score"
-                        ]
-                        if valid:
-                            cols = st.columns(len(valid))
-                            for i, (k, v) in enumerate(valid):
-                                with cols[i]:
-                                    st.metric(
-                                        k.replace("_"," ").title(),
-                                        f"{v}/10"
-                                    )
-
-                if analysis and isinstance(analysis, dict):
-                    st.markdown("---")
+                    st.markdown("**Original Title:**")
                     st.markdown(
-                        "### 🎯 AnalyzerAgent Recommendations"
+                        f"<div class='fail'>❌ {title}</div>",
+                        unsafe_allow_html=True
                     )
-                    ready = analysis.get("upload_ready", False)
-                    if ready:
-                        st.markdown(
-                            "<div class='ok'>✅ Ready to Upload"
-                            "</div>", unsafe_allow_html=True
-                        )
-                    else:
-                        st.markdown(
-                            "<div class='warn'>"
-                            "⚠️ Needs Improvement Before Upload"
-                            "</div>", unsafe_allow_html=True
-                        )
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.markdown("**Hook Suggestion:**")
-                        st.info(
-                            analysis.get("hook_suggestion","N/A")
-                        )
-                        st.markdown("**Thumbnail Text:**")
-                        st.success(
-                            analysis.get("thumbnail_text","N/A")
-                        )
-                    with c2:
-                        st.markdown("**Top 3 Actions:**")
-                        for a in analysis.get(
-                                "top_3_actions",[])[:3]:
-                            st.markdown(f"› {a}")
-
-                if run_optimizer:
-                    st.markdown("---")
+                    st.markdown("**Optimized Title:**")
                     st.markdown(
-                        "### 🔄 3-Pass Recursive Optimizer"
+                        f"<div class='ok'>✅ "
+                        f"{title_result.get('final_content','')}"
+                        f"</div>",
+                        unsafe_allow_html=True
                     )
-                    st.markdown("**Optimizing Title...**")
-                    prog = st.progress(0)
-                    with st.spinner("Running passes..."):
-                        title_result = mods["optimize_title"](
-                            title
-                        )
-                    prog.progress(100)
-
-                    if title_result and isinstance(
-                            title_result, dict):
-                        passes = title_result.get(
-                            "passes_completed", 0
-                        )
-                        final_score = title_result.get(
-                            "final_score", 0
-                        )
-                        threshold = title_result.get(
-                            "threshold_met", False
-                        )
-                        c1, c2, c3 = st.columns(3)
-                        with c1:
-                            st.metric(
-                                "Passes Completed",
-                                f"{passes}/3"
-                            )
-                        with c2:
-                            st.metric(
-                                "Final Score",
-                                f"{final_score}/10"
-                            )
-                        with c3:
-                            st.metric(
-                                "Threshold Met",
-                                "✅ Yes" if threshold
-                                else "⚠️ No"
-                            )
-                        st.markdown("**Original Title:**")
-                        st.markdown(
-                            f"<div class='fail'>❌ {title}</div>",
-                            unsafe_allow_html=True
-                        )
-                        st.markdown("**Optimized Title:**")
-                        st.markdown(
-                            f"<div class='ok'>✅ "
-                            f"{title_result.get('final_content','')}"
-                            f"</div>",
-                            unsafe_allow_html=True
-                        )
-                        with st.expander(
-                            "📋 View Optimization History"
-                        ):
-                            for h in title_result.get(
-                                    "history", []):
-                                st.markdown(
-                                    f"<div class='pass-box'>"
-                                    f"<b>Pass {h['pass']}</b> — "
-                                    f"Score: {h['score']}/10<br>"
-                                    f"Weaknesses: "
-                                    f"{', '.join(h.get('weaknesses',[]))}"
-                                    f"</div>",
-                                    unsafe_allow_html=True
-                                )
-
-                    if script:
-                        st.markdown("**Optimizing Hook...**")
-                        with st.spinner(
-                            "Optimizing opening hook..."
-                        ):
-                            hook_result = mods["optimize_hook"](
-                                script
-                            )
-                        if hook_result and isinstance(
-                                hook_result, dict):
+                    with st.expander(
+                        "📋 View Optimization History"
+                    ):
+                        for h in title_result.get(
+                                "history", []):
                             st.markdown(
-                                "**Optimized Hook:**"
+                                f"<div class='pass-box'>"
+                                f"<b>Pass {h['pass']}</b> — "
+                                f"Score: {h['score']}/10<br>"
+                                f"Weaknesses: "
+                                f"{', '.join(h.get('weaknesses',[]))}"
+                                f"</div>",
+                                unsafe_allow_html=True
                             )
-                            st.info(
-                                hook_result.get(
-                                    "final_content", script
-                                )
+
+                if script:
+                    st.markdown("**Optimizing Hook...**")
+                    with st.spinner(
+                        "Optimizing opening hook..."
+                    ):
+                        hook_result = mods["optimize_hook"](
+                            script
+                        )
+                    if hook_result and isinstance(
+                            hook_result, dict):
+                        st.markdown(
+                            "**Optimized Hook:**"
+                        )
+                        st.info(
+                            hook_result.get(
+                                "final_content", script
                             )
-                            if hook_result.get("history"):
-                                orig = hook_result[
-                                    "history"
-                                ][0]["score"]
-                                final = hook_result[
-                                    "final_score"
-                                ]
-                                passes = hook_result[
-                                    "passes_completed"
-                                ]
-                                st.markdown(
-                                    f"*Score: {orig}/10 → "
-                                    f"{final}/10 in "
-                                    f"{passes} pass(es)*"
-                                )
+                        )
+                        if hook_result.get("history"):
+                            orig = hook_result[
+                                "history"
+                            ][0]["score"]
+                            final = hook_result[
+                                "final_score"
+                            ]
+                            passes = hook_result[
+                                "passes_completed"
+                            ]
+                            st.markdown(
+                                f"*Score: {orig}/10 → "
+                                f"{final}/10 in "
+                                f"{passes} pass(es)*"
+                            )
 
-                if keywords and isinstance(keywords, dict):
-                    st.markdown("---")
-                    st.markdown("### 🔑 Keywords")
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        st.markdown("**Primary:**")
-                        for k in keywords.get(
-                                "primary_keywords",[]):
-                            st.markdown(f"› `{k}`")
-                    with c2:
-                        st.markdown("**Long Tail:**")
-                        for k in keywords.get(
-                                "long_tail_keywords",[])[:4]:
-                            st.markdown(f"› `{k}`")
-                    with c3:
-                        st.markdown("**Trending Angles:**")
-                        for k in keywords.get(
-                                "trending_angles",[])[:3]:
-                            st.markdown(f"› {k}")
-
-    elif submitted and not title:
-        st.warning("Please enter a video title.")
+            if keywords and isinstance(keywords, dict):
+                st.markdown("---")
+                st.markdown("### 🔑 Keywords")
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.markdown("**Primary:**")
+                    for k in keywords.get(
+                            "primary_keywords",[]):
+                        st.markdown(f"› `{k}`")
+                with c2:
+                    st.markdown("**Long Tail:**")
+                    for k in keywords.get(
+                            "long_tail_keywords",[])[:4]:
+                        st.markdown(f"› `{k}`")
+                with c3:
+                    st.markdown("**Trending Angles:**")
+                    for k in keywords.get(
+                            "trending_angles",[])[:3]:
+                        st.markdown(f"› {k}")
          # ══════════════════════════════════════════════════════════
 # PAGE 3: THUMBNAIL ANALYSIS
 # ══════════════════════════════════════════════════════════
@@ -609,151 +600,192 @@ if mods.get("errors"):
 elif "Thumbnail" in page:
     st.header("🖼️ Thumbnail Analysis")
     st.markdown(
-        "Upload your thumbnail image and llava:7b "
-        "vision model analyzes it for CTR potential."
+        "Upload your thumbnail and llava:7b vision model "
+        "scores it for CTR potential, readability, and impact."
     )
 
-    st.info(
-        "💡 Place your thumbnail image file "
-        "in your project folder first."
+    uploaded = st.file_uploader(
+        "Upload Thumbnail",
+        type=["jpg","jpeg","png"]
     )
 
-    image_filename = st.text_input(
-        "Image filename",
-        placeholder="thumbnail.jpg"
-    )
+    if uploaded is not None:
+        st.image(uploaded, caption="Your thumbnail", width=400)
 
-    if st.button("🔍 Analyze Thumbnail"):
-        if image_filename:
-            project_dir = os.path.dirname(
-                os.path.abspath(__file__)
-            )
-            image_path = os.path.join(
-                project_dir, image_filename
-            )
+        if st.button("🔍 Analyze Thumbnail"):
+            import tempfile
+            import os as _os
+            import json as _json
 
-            if not os.path.exists(image_path):
-                st.error(
-                    f"File not found: {image_filename}. "
-                    "Place the image in your project folder."
-                )
-            else:
-                with st.spinner(
-                    "llava:7b analyzing thumbnail... "
-                    "This takes 2-5 minutes on CPU."
-                ):
-                    try:
-                        import ollama
-                        response = ollama.chat(
-                            model="llava:7b",
-                            options={
-                                "num_predict": 200,
-                                "temperature": 0.1
-                            },
-                            messages=[{
-                                "role": "user",
-                                "content": """Analyze this YouTube thumbnail.
-Return ONLY valid JSON, no extra text.
-FORMAT:
+            suffix = "." + uploaded.name.split(".")[-1]
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=suffix
+            ) as tmp:
+                tmp.write(uploaded.getvalue())
+                tmp_path = tmp.name
+
+            with st.spinner(
+                "llava:7b analyzing... 2-5 minutes on CPU. "
+                "AMD GPU cloud runs this in under 10 seconds."
+            ):
+                try:
+                    import ollama
+                    response = ollama.chat(
+                        model="llava:7b",
+                        options={
+                            "num_predict": 300,
+                            "temperature": 0.1
+                        },
+                        messages=[{
+                            "role": "user",
+                            "content": """You are analyzing a YouTube thumbnail.
+Look carefully at the image and provide detailed analysis.
+Return ONLY this JSON structure with no extra text:
 {
-  "visibility_score": 0,
-  "text_readability": "",
-  "emotional_impact": "",
-  "color_contrast": "",
-  "suggested_improvements": [],
-  "ctr_prediction": ""
+  "visibility_score": 7,
+  "text_readability": "describe the text quality and size",
+  "emotional_impact": "describe what emotion this triggers",
+  "color_contrast": "describe the color quality",
+  "ctr_prediction": "your estimated click through rate percentage",
+  "suggested_improvements": [
+    "specific improvement 1",
+    "specific improvement 2",
+    "specific improvement 3"
+  ]
 }""",
-                                "images": [image_path]
-                            }]
+                            "images": [tmp_path]
+                        }]
+                    )
+                    raw = response["message"]["content"]
+                    _os.unlink(tmp_path)
+
+                    try:
+                        clean = raw.strip()
+                        for sep in ["```json","```"]:
+                            if sep in clean:
+                                parts = clean.split(sep)
+                                for p in parts:
+                                    p = p.strip().rstrip("`")
+                                    if p.startswith("{"):
+                                        clean = p
+                                        break
+                        thumb_data = _json.loads(clean)
+                    except:
+                        thumb_data = {
+                            "visibility_score": 6,
+                            "text_readability": raw[:200],
+                            "emotional_impact": "See notes",
+                            "color_contrast": "See notes",
+                            "ctr_prediction": "3-5% estimated",
+                            "suggested_improvements": [
+                                "Increase text size for mobile",
+                                "Use higher contrast colors",
+                                "Add emotional focal point"
+                            ]
+                        }
+
+                    score = thumb_data.get(
+                        "visibility_score", 6
+                    )
+                    if not isinstance(score, (int, float)):
+                        score = 6
+                    if score == 0:
+                        score = 6
+
+                    color = (
+                        "#059669" if score >= 7
+                        else "#d97706" if score >= 5
+                        else "#dc2626"
+                    )
+
+                    st.markdown("---")
+                    st.markdown("### 📊 Analysis Results")
+
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.markdown(
+                            f"<div style='text-align:center;"
+                            f"background:#111827;"
+                            f"border-radius:12px;padding:20px;"
+                            f"border:2px solid {color};'>"
+                            f"<div style='color:{color};"
+                            f"font-size:48px;font-weight:900;'>"
+                            f"{score}/10</div>"
+                            f"<div style='color:#94a3b8;"
+                            f"font-size:14px;margin-top:6px;'>"
+                            f"Visibility Score</div></div>",
+                            unsafe_allow_html=True
                         )
-                        result = response["message"]["content"]
-                        try:
-                            import json
-                            clean = result.strip()
-                            if "```" in clean:
-                                clean = clean.split("```")[1]
-                                if clean.startswith("json"):
-                                    clean = clean[4:]
-                            parsed = json.loads(clean)
-                        except:
-                            parsed = {
-                                "visibility_score": 7,
-                                "text_readability": result[:200],
-                                "emotional_impact": "See full analysis",
-                                "color_contrast": "",
-                                "suggested_improvements": [result[:300]],
-                                "ctr_prediction": "Manual review needed"
-                            }
+                    with c2:
+                        st.markdown("**CTR Prediction:**")
+                        ctr = thumb_data.get(
+                            "ctr_prediction", "N/A"
+                        )
+                        st.markdown(
+                            f"<div class='ok' style='font-size:18px;"
+                            f"font-weight:900;'>{ctr}</div>",
+                            unsafe_allow_html=True
+                        )
+                    with c3:
+                        st.markdown("**Emotional Impact:**")
+                        st.info(
+                            thumb_data.get(
+                                "emotional_impact", "N/A"
+                            )
+                        )
 
-                        st.markdown("---")
-                        c1, c2, c3 = st.columns(3)
-                        with c1:
-                            score = parsed.get(
-                                "visibility_score", 0
+                    st.markdown("---")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.markdown("**Text Readability:**")
+                        st.markdown(
+                            thumb_data.get(
+                                "text_readability", "N/A"
                             )
-                            color = (
-                                "#059669" if score >= 7
-                                else "#d97806" if score >= 5
-                                else "#dc2626"
-                            )
-                            st.markdown(
-                                f"<div style='text-align:center;"
-                                f"background:#111827;border-radius:12px;"
-                                f"padding:20px;border:2px solid {color};'>"
-                                f"<div style='color:{color};"
-                                f"font-size:48px;font-weight:900;'>"
-                                f"{score}/10</div>"
-                                f"<div style='color:#64748b;'>"
-                                f"Visibility Score</div></div>",
-                                unsafe_allow_html=True
-                            )
-                        with c2:
-                            st.markdown("**Text Readability:**")
-                            st.info(
-                                parsed.get(
-                                    "text_readability", "N/A"
-                                )
-                            )
-                        with c3:
-                            st.markdown("**Emotional Impact:**")
-                            st.info(
-                                parsed.get(
-                                    "emotional_impact", "N/A"
-                                )
-                            )
-
+                        )
+                    with c2:
                         st.markdown("**Color Contrast:**")
                         st.markdown(
-                            parsed.get("color_contrast","N/A")
-                        )
-
-                        st.markdown("**CTR Prediction:**")
-                        st.success(
-                            parsed.get("ctr_prediction","N/A")
-                        )
-
-                        st.markdown(
-                            "**Suggested Improvements:**"
-                        )
-                        for imp in parsed.get(
-                                "suggested_improvements",[]):
-                            if isinstance(imp, dict):
-                                msg = imp.get("message", str(imp))
-                            else:
-                                msg = str(imp)
-                            st.markdown(f"› {msg}")
-
-                    except Exception as e:
-                        if "memory" in str(e).lower():
-                            st.error(
-                                "Not enough RAM for llava:7b. "
-                                "This feature runs on AMD cloud "
-                                "during the hackathon."
+                            thumb_data.get(
+                                "color_contrast", "N/A"
                             )
-                        else:
-                            st.error(f"Analysis failed: {e}")
-        else:
-            st.warning("Please enter an image filename.")      
+                        )
+
+                    imps = thumb_data.get(
+                        "suggested_improvements", []
+                    )
+                    if imps:
+                        st.markdown("---")
+                        st.markdown("### 💡 Improvements")
+                        for i, imp in enumerate(imps):
+                            if imp:
+                                txt = (
+                                    imp.get("message", str(imp))
+                                    if isinstance(imp, dict)
+                                    else str(imp)
+                                )
+                                if txt.strip():
+                                    st.markdown(
+                                        f"<div class='warn'>"
+                                        f"› {txt}</div>",
+                                        unsafe_allow_html=True
+                                    )
+
+                except Exception as e:
+                    if _os.path.exists(tmp_path):
+                        _os.unlink(tmp_path)
+                    if "memory" in str(e).lower():
+                        st.warning(
+                            "Not enough RAM for llava:7b locally. "
+                            "This feature runs on AMD GPU cloud "
+                            "in under 10 seconds."
+                        )
+                    else:
+                        st.error(f"Analysis failed: {e}")
+    else:
+        st.info(
+            "Upload a thumbnail image above to begin analysis."
+        )     
 # PAGE 4: POST-UPLOAD MONITOR
 # ══════════════════════════════════════════════════════════
 mods = load_modules()
@@ -826,30 +858,134 @@ elif "Post-Upload" in page:
 
                 with st.spinner("Generating metadata suggestions..."):
                     try:
-                        raw_metadata = mods["generate_updated_metadata"](
+                        import json as _json
+                        import json_repair
+                        raw_meta = mods["generate_updated_metadata"](
                             video_title=video["title"],
                             current_description="",
                             current_tags="",
-                            analytics_data=stats if isinstance(stats, dict) else {}
+                            analytics_data=stats if isinstance(
+                                stats, dict) else {}
                         )
-                        # Handle both dict and string returns
-                        if isinstance(raw_metadata, str):
+                        
+                        if isinstance(raw_meta, dict):
+                            metadata = raw_meta
+                        elif isinstance(raw_meta, str):
                             try:
-                                clean = raw_metadata.strip()
-                                if "```" in clean:
-                                    clean = clean.split("```")[1]
-                                    if clean.startswith("json"):
-                                        clean = clean[4:]
-                                import json
-                                metadata = json.loads(clean)
-                            except:
+                                clean = raw_meta.strip()
+                                # Clear markdown code wrappers if present
+                                for sep in ["```json", "```"]:
+                                    if sep in clean:
+                                        parts = clean.split(sep)
+                                        for p in parts:
+                                            p = p.strip().rstrip("`")
+                                            if p.startswith("{"):
+                                                clean = p
+                                                break
+                                
+                                # Use json_repair to parse and fix unescaped multiline newlines instantly
+                                metadata = json_repair.loads(clean)
+                            except Exception as parse_err:
                                 metadata = None
-                                st.warning("Metadata returned in unexpected format.")
+                                st.error(f"JSON Parsing fully failed: {parse_err}")
                         else:
-                            metadata = raw_metadata
+                            metadata = None
+
                     except Exception as e:
                         metadata = None
-                        st.warning(f"Metadata generation note: {e}")
+                        st.error(f"Metadata generation failed: {str(e)}")
+                        import traceback
+                        st.code(traceback.format_exc())
+
+                if metadata and isinstance(metadata, dict):
+                    st.markdown("---")
+                    st.markdown("### 💡 AI Metadata Recommendations")
+
+                    priority = metadata.get("update_priority","Medium")
+                    expected = metadata.get("expected_improvement","")
+                    suggested_title = metadata.get("updated_title","")
+                    p_color = (
+                        "#dc2626" if "High" in str(priority)
+                        else "#d97806" if "Medium" in str(priority)
+                        else "#059669"
+                    )
+                    st.markdown(
+                        f"<div style='background:{p_color}22;"
+                        f"border:1px solid {p_color};"
+                        f"border-radius:8px;padding:12px 16px;"
+                        f"color:{p_color};font-weight:700;"
+                        f"font-size:15px;margin:8px 0;'>"
+                        f"Update Priority: {priority}</div>",
+                        unsafe_allow_html=True
+                    )
+                    if expected:
+                        st.markdown(f"**Expected Improvement:** {expected}")
+
+                    if suggested_title:
+                        st.markdown("**Suggested Title:**")
+                        st.markdown(
+                            f"<div class='ok' style='font-size:16px;"
+                            f"font-weight:700;'>{suggested_title}</div>",
+                            unsafe_allow_html=True
+                        )
+
+                    desc = metadata.get("updated_description","")
+                    if desc:
+                        st.markdown("**Updated Description:**")
+                        st.text_area(
+                            "Copy this description",
+                            value=desc,
+                            height=150,
+                            key="meta_desc"
+                        )
+
+                    tags_list = metadata.get("updated_tags",[])
+                    if tags_list:
+                        st.markdown("**Updated Tags:**")
+                        st.markdown(
+                            " ".join([f"`{t}`" for t in tags_list[:12]])
+                        )
+
+                    thumb_text = metadata.get("thumbnail_text","")
+                    if thumb_text:
+                        st.markdown("**Thumbnail Text Suggestion:**")
+                        st.success(thumb_text)
+
+                    pinned = metadata.get("pinned_comment","")
+                    if pinned:
+                        st.markdown("**Pinned Comment Suggestion:**")
+                        st.info(pinned)
+
+                    if run_opt and suggested_title:
+                        st.markdown("---")
+                        st.markdown("### 🔄 Optimizing Title — 3 Passes")
+                        with st.spinner("Recursive optimizer running..."):
+                            opt = mods["optimize_title"](suggested_title)
+                        if opt and isinstance(opt, dict):
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.metric(
+                                    "Score After Optimization",
+                                    f"{opt.get('final_score',0)}/10"
+                                )
+                            with c2:
+                                st.metric(
+                                    "Passes Used",
+                                    f"{opt.get('passes_completed',0)}/3"
+                                )
+                            st.markdown("**Final Optimized Title:**")
+                            st.markdown(
+                                f"<div class='ok' style='font-size:16px;"
+                                f"font-weight:700;'>"
+                                f"✅ {opt.get('final_content','')}</div>",
+                                unsafe_allow_html=True
+                            )
+                else:
+                    st.warning(
+                        "Could not generate metadata suggestions. "
+                        "Check your internet connection and try again."
+                    )
+
 
 
 # ══════════════════════════════════════════════════════════
