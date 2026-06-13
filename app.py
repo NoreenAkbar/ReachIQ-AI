@@ -145,7 +145,8 @@ with st.sidebar:
         menu_title="Navigate", 
         options=[
             "Overview", 
-            "Pre-Upload Analyzer", 
+            "Pre-Upload Analyzer",
+            "Band Live Coordination", 
             "Thumbnail Analysis", 
             "Post-Upload Monitor", 
             "Social Distribution", 
@@ -154,7 +155,7 @@ with st.sidebar:
             "System Diagnostics"
         ],
         # Clean modern icons that replace your emojis perfectly
-        icons=["house", "search", "image", "activity", "share", "database", "shield-check", "gear"], 
+        icons=["house", "search","hands" "image", "activity", "share", "database", "shield-check", "gear"], 
         menu_icon="compass", 
         default_index=2, # Automatically opens your active Thumbnail Analysis page on bootup
         styles={
@@ -681,6 +682,86 @@ elif "Pre-Upload" in page:
                     for k in keywords.get(
                             "trending_angles",[])[:3]:
                         st.markdown(f"› {k}")
+        #____________________________
+#____________________________
+elif "Band Live Coordination" in page:
+    st.header("🤝 Band Live Coordination")
+    #st.write(f"DEBUG page value = {repr(page)}")
+    #st.write("DEBUG: step 1")
+    import band_demo
+    #st.write("DEBUG: step 2 - module imported")
+    #st.write(f"DEBUG: has start_band_bridge = {hasattr(band_demo, 'start_band_bridge')}")
+    st.markdown(
+        "Trigger a real pre-upload analysis task. Watch BrainAgent route it "
+        "to AnalyzerAgent through **Band**, and see the live coordination trace."
+    )
+
+    from band_demo import start_band_bridge, send_task_to_band, drain_events, is_bridge_running
+    import json as _json
+    import time as _time
+
+    if not is_bridge_running():
+        with st.spinner("Connecting agents to Band..."):
+            start_band_bridge()
+            _time.sleep(8)
+
+    if is_bridge_running():
+        st.markdown("<div class='ok'>✅ All 4 agents connected to Band</div>", unsafe_allow_html=True)
+    else:
+        st.markdown("<div class='fail'>⚠️ Band bridge not running</div>", unsafe_allow_html=True)
+
+    with st.form("band_form"):
+        b_title = st.text_input("Video Title", placeholder="e.g. How AI is Changing Education")
+        b_desc = st.text_area("Description", height=80)
+        b_tags = st.text_input("Tags (comma separated)")
+        b_script = st.text_area("Script (optional)", height=80)
+        b_submit = st.form_submit_button("🚀 Send to Band Agents")
+
+    if "band_log" not in st.session_state:
+        st.session_state.band_log = []
+
+    if b_submit and b_title:
+        payload = _json.dumps({
+            "title": b_title,
+            "description": b_desc,
+            "tags": b_tags,
+            "script": b_script
+        })
+        try:
+            ok = send_task_to_band(payload)
+            if ok:
+                st.success(f"send_task_to_band returned True")
+            else:
+                st.error("send_task_to_band returned False — check ROOM_ID.")
+        except Exception as e:
+            st.error(f"send_task_to_band failed: {e}")
+            import traceback
+            st.code(traceback.format_exc())
+        st.session_state.band_log = []
+        st.info("Task sent. Waiting for agents to respond (this can take up to 2 minutes)...")
+
+    log_placeholder = st.empty()
+
+    if b_submit:
+        for _ in range(120):  # poll for ~20 seconds
+            new_events = drain_events()
+            st.session_state.band_log.extend(new_events)
+            with log_placeholder.container():
+                for e in st.session_state.band_log:
+                    st.markdown(
+                        f"<div class='pass-box'><b>[{e['timestamp']}] {e['agent']}</b><br>{e['text']}</div>",
+                        unsafe_allow_html=True
+                    )
+            if any("Analysis complete" in e["text"] for e in st.session_state.band_log):
+                break
+            _time.sleep(1)
+    else:
+        with log_placeholder.container():
+            for e in st.session_state.band_log:
+                st.markdown(
+                    f"<div class='pass-box'><b>[{e['timestamp']}] {e['agent']}</b><br>{e['text']}</div>",
+                    unsafe_allow_html=True
+                )
          # ══════════════════════════════════════════════════════════
 # PAGE 3: THUMBNAIL ANALYSIS
 # ══════════════════════════════════════════════════════════
