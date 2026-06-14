@@ -683,85 +683,224 @@ elif "Pre-Upload" in page:
                             "trending_angles",[])[:3]:
                         st.markdown(f"› {k}")
         #____________________________
-#____________________________
+#__Band Live Coordination__________________________
 elif "Band Live Coordination" in page:
     st.header("🤝 Band Live Coordination")
-    #st.write(f"DEBUG page value = {repr(page)}")
-    #st.write("DEBUG: step 1")
-    import band_demo
-    #st.write("DEBUG: step 2 - module imported")
-    #st.write(f"DEBUG: has start_band_bridge = {hasattr(band_demo, 'start_band_bridge')}")
     st.markdown(
-        "Trigger a real pre-upload analysis task. Watch BrainAgent route it "
-        "to AnalyzerAgent through **Band**, and see the live coordination trace."
+        "**Fully autonomous multi-agent growth workflow via Band.** "
+        "One click triggers a sequential chain: "
+        "MonitorAgent fetches your weakest video → "
+        "AnalyzerAgent optimizes its metadata + thumbnail → "
+        "DistributionAgent generates promotional content."
     )
 
-    from band_demo import start_band_bridge, send_task_to_band, drain_events, is_bridge_running
+    import band_demo
+    from band_demo import (start_band_bridge, send_task_to_band,
+                           drain_events, is_bridge_running, get_chain_state)
     import json as _json
     import time as _time
 
     if not is_bridge_running():
-        with st.spinner("Connecting agents to Band..."):
+        with st.spinner("Connecting all 4 agents to Band..."):
             start_band_bridge()
             _time.sleep(8)
 
     if is_bridge_running():
-        st.markdown("<div class='ok'>✅ All 4 agents connected to Band</div>", unsafe_allow_html=True)
+        st.markdown("<div class='ok'>✅ All 4 agents connected to Band and listening</div>",
+                    unsafe_allow_html=True)
     else:
-        st.markdown("<div class='fail'>⚠️ Band bridge not running</div>", unsafe_allow_html=True)
+        st.markdown("<div class='fail'>⚠️ Band bridge not running</div>",
+                    unsafe_allow_html=True)
 
-    with st.form("band_form"):
-        b_title = st.text_input("Video Title", placeholder="e.g. How AI is Changing Education")
-        b_desc = st.text_area("Description", height=80)
-        b_tags = st.text_input("Tags (comma separated)")
-        b_script = st.text_area("Script (optional)", height=80)
-        b_submit = st.form_submit_button("🚀 Send to Band Agents")
+    st.markdown("---")
+
+    if st.button("🚀 Run Autonomous Growth Workflow"):
+        st.session_state.band_log = []
+        st.session_state.workflow_done = False
+        try:
+            ok = send_task_to_band("START_AUTONOMOUS_WORKFLOW")
+            if ok:
+                st.success("Workflow started. Watch agents collaborate live below...")
+            else:
+                st.error("Failed to start workflow. Check ROOM_ID and bridge status.")
+        except Exception as e:
+            st.error(f"Error: {e}")
 
     if "band_log" not in st.session_state:
         st.session_state.band_log = []
-
-    if b_submit and b_title:
-        payload = _json.dumps({
-            "title": b_title,
-            "description": b_desc,
-            "tags": b_tags,
-            "script": b_script
-        })
-        try:
-            ok = send_task_to_band(payload)
-            if ok:
-                st.success(f"send_task_to_band returned True")
-            else:
-                st.error("send_task_to_band returned False — check ROOM_ID.")
-        except Exception as e:
-            st.error(f"send_task_to_band failed: {e}")
-            import traceback
-            st.code(traceback.format_exc())
-        st.session_state.band_log = []
-        st.info("Task sent. Waiting for agents to respond (this can take up to 2 minutes)...")
+    if "workflow_done" not in st.session_state:
+        st.session_state.workflow_done = False
 
     log_placeholder = st.empty()
+    results_placeholder = st.empty()
 
-    if b_submit:
-        for _ in range(120):  # poll for ~20 seconds
+    # Live polling
+    if not st.session_state.workflow_done:
+        for _ in range(180):  # 3 min max
             new_events = drain_events()
-            st.session_state.band_log.extend(new_events)
-            with log_placeholder.container():
-                for e in st.session_state.band_log:
-                    st.markdown(
-                        f"<div class='pass-box'><b>[{e['timestamp']}] {e['agent']}</b><br>{e['text']}</div>",
-                        unsafe_allow_html=True
-                    )
-            if any("Analysis complete" in e["text"] for e in st.session_state.band_log):
-                break
+            if new_events:
+                st.session_state.band_log.extend(new_events)
+                with log_placeholder.container():
+                    st.markdown("### 🔄 Live Agent Coordination Trace")
+                    for e in st.session_state.band_log:
+                        color = {
+                            "agent_monitor": "#d97806",
+                            "agent_analyzer": "#0ea5e9",
+                            "agent_distribution": "#db2777",
+                            "System": "#dc2626"
+                        }.get(e["agent"], "#64748b")
+                        st.markdown(
+                            f"<div class='pass-box' style='border-left-color:{color};'>"
+                            f"<b style='color:{color};'>[{e['timestamp']}] {e['agent']}</b>"
+                            f"<br>{e['text']}</div>",
+                            unsafe_allow_html=True
+                        )
+                # Check if workflow complete
+                if any("Autonomous growth workflow complete" in e["text"]
+                       for e in st.session_state.band_log):
+                    st.session_state.workflow_done = True
+                    break
             _time.sleep(1)
-    else:
+
+    # Show persisted log
+    if st.session_state.workflow_done or st.session_state.band_log:
         with log_placeholder.container():
+            st.markdown("### 🔄 Live Agent Coordination Trace")
             for e in st.session_state.band_log:
+                color = {
+                    "agent_monitor": "#d97806",
+                    "agent_analyzer": "#0ea5e9",
+                    "agent_distribution": "#db2777",
+                    "System": "#dc2626"
+                }.get(e["agent"], "#64748b")
                 st.markdown(
-                    f"<div class='pass-box'><b>[{e['timestamp']}] {e['agent']}</b><br>{e['text']}</div>",
+                    f"<div class='pass-box' style='border-left-color:{color};'>"
+                    f"<b style='color:{color};'>[{e['timestamp']}] {e['agent']}</b>"
+                    f"<br>{e['text']}</div>",
                     unsafe_allow_html=True
                 )
+
+    # Show final results
+    if st.session_state.workflow_done:
+        chain = get_chain_state()
+        with results_placeholder.container():
+            st.markdown("---")
+            st.markdown("### ✅ Autonomous Workflow Results")
+
+            monitor_r = chain.get("monitor_result", {})
+            analyzer_r = chain.get("analyzer_result", {})
+            distribution_r = chain.get("distribution_result", {})
+
+            if monitor_r:
+                st.markdown("**📺 Channel: SmartMind AIverse**")
+                st.markdown("**📊 Weakest Video Identified:**")
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.metric("Views",
+                              monitor_r.get("stats", {}).get("views", 0))
+                with c2:
+                    st.metric("Likes",
+                              monitor_r.get("stats", {}).get("likes", 0))
+                with c3:
+                    st.metric("Comments",
+                              monitor_r.get("stats", {}).get("comments", 0))
+                st.markdown(f"**Original Title:** {monitor_r.get('title', '')}")
+
+            if analyzer_r:
+                st.markdown("---")
+                st.markdown("**🔍 Analyzer Optimization:**")
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.metric("Content Score",
+                              f"{analyzer_r.get('current_score', 0)}/100")
+                with c2:
+                    st.metric("Title Optimizer Score",
+                              f"{analyzer_r.get('optimizer_score', 0)}/10")
+                st.markdown(
+                    f"<div class='fail'>❌ Original: "
+                    f"{analyzer_r.get('original_title', '')}</div>",
+                    unsafe_allow_html=True
+                )
+                st.markdown(
+                    f"<div class='ok'>✅ Optimized: "
+                    f"{analyzer_r.get('optimized_title', '')}</div>",
+                    unsafe_allow_html=True
+                )
+                thumb_analysis = analyzer_r.get("thumbnail_analysis") or {}
+                if thumb_analysis and isinstance(thumb_analysis, dict):
+                    st.markdown("**🖼️ Thumbnail Analysis:**")
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.metric("Visibility Score",
+                                  f"{thumb_analysis.get('visibility_score', 0)}/10")
+                    with c2:
+                        st.metric("CTR Prediction",
+                                  thumb_analysis.get("ctr_prediction", "N/A"))
+                    with c3:
+                        st.metric("Emotional Impact",
+                                  thumb_analysis.get("emotional_impact", "N/A"))
+                    overlay = thumb_analysis.get("text_overlay", "") or analyzer_r.get("thumbnail_text", "")
+                    if overlay:
+                        st.markdown("**Suggested Text Overlay:**")
+                        st.success(overlay)
+                    imps = thumb_analysis.get("improvements", [])
+                    if imps:
+                        st.markdown("**Improvements:**")
+                        for imp in imps:
+                            st.markdown(
+                                f"<div class='warn'>› {imp}</div>",
+                                unsafe_allow_html=True
+                            )
+                    st.success(
+                        f"🖼️ Thumbnail Text: {analyzer_r['thumbnail_text']}"
+                    )
+                if analyzer_r.get("updated_description"):
+                    st.markdown("**Updated Description:**")
+                    st.text_area("Copy this",
+                                 value=analyzer_r["updated_description"],
+                                 height=120, key="aut_desc")
+                if analyzer_r.get("updated_tags"):
+                    st.markdown("**Updated Tags:**")
+                    st.markdown(" ".join(
+                        [f"`{t}`" for t in analyzer_r["updated_tags"][:12]]
+                    ))
+
+            if distribution_r:
+                st.markdown("---")
+                st.markdown("**📢 Distribution Posts Ready:**")
+                platforms = distribution_r.get("platforms", [])
+                st.markdown(f"Generated for: {', '.join(platforms)}")
+                posts = distribution_r.get("posts", {})
+                if isinstance(posts, dict):
+                    icons = {
+                        "youtube_community": "▶️ YouTube",
+                        "facebook": "📘 Facebook",
+                        "linkedin": "💼 LinkedIn",
+                        "reddit": "🔴 Reddit",
+                        "quora": "❓ Quora",
+                        "twitter": "🐦 Twitter/X"
+                    }
+                    for platform, content in posts.items():
+                        if isinstance(content, dict):
+                            post_text = content.get("post", "")
+                            if post_text:
+                                with st.expander(
+                                    f"{icons.get(platform, platform)}"
+                                ):
+                                    st.text_area("Copy",
+                                                 value=post_text,
+                                                 height=100,
+                                                 key=f"dist_{platform}")
+
+                reddit_opps = distribution_r.get("reddit", {})
+                if reddit_opps and isinstance(reddit_opps, dict):
+                    st.markdown("**🔴 Reddit Opportunities:**")
+                    for sub in reddit_opps.get("subreddits", [])[:3]:
+                        if isinstance(sub, dict):
+                            with st.expander(
+                                f"r/{sub.get('name','').replace('r/','')}"
+                            ):
+                                st.write(sub.get("sample_comment", ""))
          # ══════════════════════════════════════════════════════════
 # PAGE 3: THUMBNAIL ANALYSIS
 # ══════════════════════════════════════════════════════════

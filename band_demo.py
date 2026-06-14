@@ -43,6 +43,9 @@ import logging
 import threading
 import datetime
 import queue as queue_module
+import threading
+_chain_state = {}
+_chain_lock = threading.Lock()
 #print(">>> band_demo.py: stdlib imports done")
 
 from band import BandLink, AgentRuntime, AgentTools
@@ -99,90 +102,17 @@ def _emit(agent_name, text):
 # Each wraps your EXISTING process_task() / delegate_task() logic.
 # ─────────────────────────────────────────────
 
+# ─────────────────────────────────────────────
+# SHARED CHAIN STATE (thread-safe)
+# ─────────────────────────────────────────────
+import threading
+_chain_state = {}
+_chain_lock = threading.Lock()
+
+
 def make_brain_handler(my_agent_id):
-    from agent_brain import analyze_task_intent
-
     async def on_execute(ctx, event: PlatformEvent):
-        if not isinstance(event, MessageEvent):
-            return
-        msg = event.payload
-        content = msg.content or ""
-
-        if my_agent_id not in content:
-            return
-        if "Analysis complete" in content or "ready" in content or "Distribution package" in content:
-            return  # ignore result replies, not new tasks
-
-        _emit("agent_brain", f"Received task: {content[:80]}")
-        ...
-
-        # Use your REAL existing intent analysis
-        intent = analyze_task_intent(content)
-        target = "agent_analyzer"
-        if intent and isinstance(intent, dict):
-            primary = intent.get("primary_agent", "analyzer_agent")
-            mapping = {
-                "analyzer_agent": "agent_analyzer",
-                "monitor_agent": "agent_monitor",
-                "distribution_agent": "agent_distribution",
-            }
-            target = mapping.get(primary, "agent_analyzer")
-
-        tools = AgentTools.from_context(ctx)
-        _emit("agent_brain", f"Routing to {target}")
-        await tools.send_message(
-            f"@{target} please process this request: {content}",
-            mentions=[f"@{target}"]
-        )
-
-    return on_execute
-
-
-def make_analyzer_handler(my_agent_id):
-    from analyzer import analyze_pre_upload
-
-    async def on_execute(ctx, event: PlatformEvent):
-        if not isinstance(event, MessageEvent):
-            return
-        msg = event.payload
-        content = msg.content or ""
-
-        if my_agent_id not in content:
-            return
-
-        _emit("agent_analyzer", "Received task from agent_brain. Analyzing...")
-
-        # Extract a title-like string from the message (best-effort demo parse)
-        import json
-        try:
-            payload_text = content.split("]]", 1)[-1].strip()
-            data = json.loads(payload_text)
-            title = data.get("title", "Untitled")
-            description = data.get("description", "")
-            tags = data.get("tags", "")
-            script = data.get("script") or None
-        except Exception:
-            title, description, tags, script = content[:100], "", "", None
-
-        result = analyze_pre_upload(title=title, description=description, tags=tags, script=script)
-
-
-        if isinstance(result, dict):
-            summary = (
-                f"Score: {result.get('overall_score', 'N/A')}/100 | "
-                f"Hook: {result.get('hook_suggestion', 'N/A')[:60]} | "
-                f"Top action: {(result.get('top_3_actions') or ['N/A'])[0]}"
-            )
-        else:
-            summary = str(result)[:200]
-
-        tools = AgentTools.from_context(ctx)
-        _emit("agent_analyzer", f"Analysis complete: {summary}")
-        await tools.send_message(
-            f"@agent_brain Analysis complete -> {summary}",
-            mentions=["@agent_brain"]
-        )
-
+        pass  # Brain not used in autonomous chain
     return on_execute
 
 
@@ -196,22 +126,85 @@ def make_monitor_handler(my_agent_id):
         if my_agent_id not in content:
             return
 
-        _emit("agent_monitor", "Received task from agent_brain. Checking channel patterns...")
+        _emit("agent_monitor", "Autonomous workflow started. Fetching real channel data for SmartMind AIverse...")
 
-        tools = AgentTools.from_context(ctx)
-        summary = "Channel monitoring ready. Run full check from Streamlit Post-Upload page."
-        _emit("agent_monitor", summary)
-        await tools.send_message(
-            f"@agent_brain {summary}",
-            mentions=["@agent_brain"]
-        )
+        try:
+            from youtube_api import get_videos, get_video_stats
+
+            # Fetch last 10 videos
+            videos = get_videos(10)
+            if not videos:
+                _emit("agent_monitor", "No videos found on channel.")
+                return
+
+            _emit("agent_monitor", f"SmartMind AIverse: Found {len(videos)} videos. Identifying weakest performer...")
+
+            # Find lowest performing by views
+            best_candidate = None
+            lowest_views = float("inf")
+
+            for v in videos:
+                stats = get_video_stats(v["video_id"])
+                if stats and isinstance(stats, dict):
+                    views = stats.get("views", 0)
+                    if views < lowest_views:
+                        lowest_views = views
+                        best_candidate = {
+                            "video_id": v["video_id"],
+                            "title": v["title"],
+                            "url": v["url"],
+                            "stats": stats
+                        }
+
+            if not best_candidate:
+                _emit("agent_monitor", "Could not determine weakest video.")
+                return
+
+            _emit("agent_monitor",
+                  f"Weakest video identified: '{best_candidate['title'][:60]}' "
+                  f"with {lowest_views} views. Passing to AnalyzerAgent...")
+
+            # Store in chain state
+            with _chain_lock:
+                _chain_state["monitor_result"] = best_candidate
+
+            # Pass to analyzer
+            
+            analyzer_id, _ = load_agent_config("analyzer")
+            payload = json.dumps({
+                "title": best_candidate["title"],
+                "description": "",
+                "tags": "",
+                "views": lowest_views,
+                "likes": best_candidate["stats"].get("likes", 0),
+                "video_id": best_candidate["video_id"],
+                "video_url": best_candidate["url"]
+            })
+
+            from thenvoi_rest import ChatMessageRequest, ChatMessageRequestMentionsItem
+            brain_link = ACTIVE_LINKS.get("brain")
+            if brain_link:
+                await brain_link.rest.agent_api_messages.create_agent_chat_message(
+                    chat_id=ROOM_ID,
+                    message=ChatMessageRequest(
+                        content=f"@agent_analyzer {payload}",
+                        mentions=[ChatMessageRequestMentionsItem(
+                            id=analyzer_id,
+                            handle="agent_analyzer"
+                        )]
+                    )
+                )
+            else:
+                _emit("agent_monitor", "Brain link not ready.")
+
+        except Exception as e:
+            _emit("agent_monitor", f"Error: {e}")
 
     return on_execute
 
 
-def make_distribution_handler(my_agent_id):
+def make_analyzer_handler(my_agent_id):
     async def on_execute(ctx, event: PlatformEvent):
-        
         if not isinstance(event, MessageEvent):
             return
         msg = event.payload
@@ -220,15 +213,223 @@ def make_distribution_handler(my_agent_id):
         if my_agent_id not in content:
             return
 
-        _emit("agent_distribution", "Received task from agent_brain. Preparing distribution package...")
+        _emit("agent_analyzer", "Received underperforming video data. Running optimization...")
 
-        tools = AgentTools.from_context(ctx)
-        summary = "Distribution package ready across 6 platforms. See Social Distribution page for full posts."
-        _emit("agent_distribution", summary)
-        await tools.send_message(
-            f"@agent_brain {summary}",
-            mentions=["@agent_brain"]
-        )
+        try:
+            payload_text = content.split("]]", 1)[-1].strip()
+            data = json.loads(payload_text)
+
+            title = data.get("title", "Untitled")
+            description = data.get("description", "")
+            tags = data.get("tags", "")
+            video_id = data.get("video_id", "")
+            video_url = data.get("video_url", "")
+            stats = {
+                "views": data.get("views", 0),
+                "likes": data.get("likes", 0)
+            }
+
+            # Step 1: Score current content
+            from scorer import score_video
+            score = score_video(title, description, tags)
+            if score and isinstance(score, dict):
+                _emit("agent_analyzer",
+                      f"Current score: {score.get('total_score', 0)}/100 | "
+                      f"Grade: {score.get('grade', 'N/A')} | "
+                      f"Priority fix: {score.get('priority_fix', 'N/A')}")
+
+            # Step 2: Generate optimized metadata
+            from metadata_updater import generate_updated_metadata
+            metadata = generate_updated_metadata(
+                video_title=title,
+                current_description=description,
+                current_tags=tags,
+                analytics_data=stats
+            )
+
+            # Step 3: Optimize title via 3-pass recursive optimizer
+            if metadata and isinstance(metadata, dict):
+                suggested_title = metadata.get("updated_title", title)
+            else:
+                suggested_title = title
+
+            _emit("agent_analyzer", "Running 3-pass recursive optimizer on title...")
+            from optimizer import optimize_title
+            optimized = optimize_title(suggested_title)
+            final_title = optimized.get("final_content", suggested_title) if optimized else suggested_title
+            final_score = optimized.get("final_score", 0) if optimized else 0
+
+            _emit("agent_analyzer",
+                  f"Optimized title: '{final_title}' | "
+                  f"Optimizer score: {final_score}/10")
+
+            # Step 4: Thumbnail text from metadata
+            thumbnail_text = ""
+            if metadata and isinstance(metadata, dict):
+                thumbnail_text = metadata.get("thumbnail_text", "")
+                if thumbnail_text:
+                    _emit("agent_analyzer",
+                          f"Thumbnail text suggestion: '{thumbnail_text}'")
+
+            # Step 5: Thumbnail optimization via AI
+            _emit("agent_analyzer", "Running thumbnail analysis...")
+            thumb_data = {}
+            try:
+                from brain import ask_brain
+                thumb_prompt = f"""
+You are ReachIQ AI analyzing thumbnail potential for a YouTube video.
+Based on the video title and content, suggest thumbnail optimization.
+Return ONLY valid JSON, no extra text.
+
+FORMAT:
+{{
+  "visibility_score": 0,
+  "ctr_prediction": "",
+  "emotional_impact": "",
+  "color_suggestion": "",
+  "text_overlay": "",
+  "improvements": []
+}}
+
+VIDEO TITLE: {final_title}
+THUMBNAIL TEXT: {thumbnail_text}
+VIEWS: {data.get('views', 0)}
+"""
+                thumb_result = ask_brain(thumb_prompt)
+                if thumb_result:
+                    try:
+                        clean = thumb_result.strip()
+                        if "```" in clean:
+                            clean = clean.split("```")[1]
+                            if clean.startswith("json"):
+                                clean = clean[4:]
+                        thumb_data = json.loads(clean)
+                        _emit("agent_analyzer",
+                              f"Thumbnail: Score {thumb_data.get('visibility_score', 0)}/10 | "
+                              f"CTR: {thumb_data.get('ctr_prediction', 'N/A')} | "
+                              f"Overlay: '{thumb_data.get('text_overlay', thumbnail_text)}'")
+                    except Exception:
+                        _emit("agent_analyzer",
+                              f"Thumbnail text confirmed: '{thumbnail_text}'")
+            except Exception as e:
+                _emit("agent_analyzer", f"Thumbnail analysis note: {e}")
+
+            # Store full results in chain state
+            analyzer_result = {
+                "original_title": title,
+                "optimized_title": final_title,
+                "optimizer_score": final_score,
+                "updated_description": metadata.get("updated_description", "") if isinstance(metadata, dict) else "",
+                "updated_tags": metadata.get("updated_tags", []) if isinstance(metadata, dict) else [],
+                "thumbnail_text": thumbnail_text,
+                "thumbnail_analysis": thumb_data,
+                "video_id": video_id,
+                "video_url": video_url,
+                "current_score": score.get("total_score", 0) if isinstance(score, dict) else 0
+            }
+
+            with _chain_lock:
+                _chain_state["analyzer_result"] = analyzer_result
+
+            _emit("agent_analyzer",
+                  "Optimization complete. Passing to DistributionAgent...")
+
+            # Step 6: Pass to distribution using ACTIVE_LINKS (not tools._link)
+            distribution_id, _ = load_agent_config("distribution")
+            dist_payload = json.dumps({
+                "video_title": final_title,
+                "video_url": video_url,
+                "keywords": metadata.get("updated_tags", ["AI", "YouTube"])[:5] if isinstance(metadata, dict) else ["AI", "YouTube"],
+                "thumbnail_text": thumbnail_text
+            })
+
+            from thenvoi_rest import ChatMessageRequest, ChatMessageRequestMentionsItem
+            brain_link = ACTIVE_LINKS.get("brain")
+            if brain_link:
+                await brain_link.rest.agent_api_messages.create_agent_chat_message(
+                    chat_id=ROOM_ID,
+                    message=ChatMessageRequest(
+                        content=f"@agent_distribution {dist_payload}",
+                        mentions=[ChatMessageRequestMentionsItem(
+                            id=distribution_id,
+                            handle="agent_distribution"
+                        )]
+                    )
+                )
+            else:
+                _emit("agent_analyzer", "Brain link not ready.")
+
+        except Exception as e:
+            _emit("agent_analyzer", f"Error in analyzer: {e}")
+            import traceback
+            print(traceback.format_exc())
+
+    return on_execute
+
+
+def make_distribution_handler(my_agent_id):
+    async def on_execute(ctx, event: PlatformEvent):
+        if not isinstance(event, MessageEvent):
+            return
+        msg = event.payload
+        content = msg.content or ""
+
+        if my_agent_id not in content:
+            return
+
+        _emit("agent_distribution", "Received optimized content. Generating promotional strategy...")
+
+        try:
+            payload_text = content.split("]]", 1)[-1].strip()
+            data = json.loads(payload_text)
+
+            video_title = data.get("video_title", "Untitled")
+            video_url = data.get("video_url", "")
+            keywords = data.get("keywords", ["AI", "YouTube"])
+            thumbnail_text = data.get("thumbnail_text", "")
+
+            from social_media import (generate_platform_posts,
+                                       find_reddit_opportunities)
+
+            # Generate platform posts
+            posts = generate_platform_posts(
+                video_title=video_title,
+                video_url=video_url,
+                keywords=keywords
+            )
+
+            # Find Reddit opportunities
+            reddit = find_reddit_opportunities(keywords[:3])
+
+            summary_parts = []
+            if posts and isinstance(posts, dict):
+                summary_parts.append(f"Posts generated for {len(posts)} platforms")
+                yt_post = posts.get("youtube_community", {}).get("post", "")[:80]
+                if yt_post:
+                    summary_parts.append(f"YouTube: {yt_post}...")
+
+            if reddit and isinstance(reddit, dict):
+                subs = reddit.get("subreddits", [])
+                sub_names = [s.get("name", "") for s in subs[:3]]
+                summary_parts.append(f"Reddit opportunities: {', '.join(sub_names)}")
+
+            if thumbnail_text:
+                summary_parts.append(f"Thumbnail text confirmed: '{thumbnail_text}'")
+
+            # Store in chain state
+            with _chain_lock:
+                _chain_state["distribution_result"] = {
+                    "posts": posts,
+                    "reddit": reddit,
+                    "platforms": list(posts.keys()) if isinstance(posts, dict) else []
+                }
+
+            _emit("agent_distribution",
+                  f"Distribution complete: {' | '.join(summary_parts)}")
+            _emit("agent_distribution", "✅ Autonomous growth workflow complete.")
+
+        except Exception as e:
+            _emit("agent_distribution", f"Error: {e}")
 
     return on_execute
 
@@ -318,50 +519,48 @@ def drain_events():
     return events
 
 
-def send_task_to_band(task_text):
+def send_task_to_band(task_text="START"):
     if not ROOM_ID:
-        _emit("System", "BAND_ROOM_ID not set — cannot send task.")
+        _emit("System", "BAND_ROOM_ID not set.")
         return False
 
-    link = ACTIVE_LINKS.get("brain")
+    link = ACTIVE_LINKS.get("analyzer")
     if not link:
-        _emit("System", "Brain link not ready yet.")
+        _emit("System", "Analyzer link not ready.")
         return False
+
+    # Clear previous chain state
+    with _chain_lock:
+        _chain_state.clear()
 
     async def _send():
         from thenvoi_rest import ChatMessageRequest, ChatMessageRequestMentionsItem
-
-        analyzer_agent_id, _ = load_agent_config("analyzer")
-
+        monitor_id, _ = load_agent_config("monitor")
         result = await link.rest.agent_api_messages.create_agent_chat_message(
             chat_id=ROOM_ID,
             message=ChatMessageRequest(
-                content=f"@agent_analyzer {task_text}",
-                mentions=[
-                    ChatMessageRequestMentionsItem(
-                        id=analyzer_agent_id,
-                        handle="agent_analyzer"
-                    )
-                ]
+                content=f"@agent_monitor {task_text}",
+                mentions=[ChatMessageRequestMentionsItem(
+                    id=monitor_id,
+                    handle="agent_monitor"
+                )]
             )
         )
-        print(f">>> send_message result: {result}")
-    print(">>> send_task_to_band called")
+        print(f">>> chain kickoff sent: {result}")
+
     if _bridge_loop and _bridge_loop.is_running():
-        print(">>> bridge loop is running, scheduling _send")
         future = asyncio.run_coroutine_threadsafe(_send(), _bridge_loop)
         try:
             future.result(timeout=15)
-            print(">>> _send completed")
         except Exception as e:
-            print(f">>> _send raised: {e}")
+            print(f">>> kickoff error: {e}")
             return False
-    else:
-        print(">>> bridge loop NOT running")
-        _emit("System", "Bridge loop not running.")
-        return False
-
     return True
+
+
+def get_chain_state():
+    with _chain_lock:
+        return dict(_chain_state)
 
 # ─────────────────────────────────────────────
 # STANDALONE TEST (terminal / Band chatroom demo)
