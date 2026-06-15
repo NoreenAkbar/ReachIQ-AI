@@ -156,7 +156,7 @@ with st.sidebar:
             "System Diagnostics"
         ],
         # Clean modern icons that replace your emojis perfectly
-        icons=["house", "search","people-fill" "image", "activity", "share", "database", "shield-check", "gear"], 
+        icons=["house", "search","people-fill","image", "activity", "share", "database", "shield-check", "gear"], 
         menu_icon="compass", 
         default_index=2, # Automatically opens your active Thumbnail Analysis page on bootup
         styles={

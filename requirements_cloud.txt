@@ -171,3 +171,5 @@ band-sdk==1.0.0
 pyyaml==6.0.3
 httpx==0.28.1
 json-repair
+pip install package --break-system-packages
+# add to requirements_local.txt manually

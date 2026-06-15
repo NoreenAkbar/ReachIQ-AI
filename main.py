@@ -1,6 +1,6 @@
 import os
-os.environ["HF_HOME"] = "E:/Developer_Space/huggingface_cache"
-os.environ["TRANSFORMERS_CACHE"] = "E:/Developer_Space/huggingface_cache"
+os.environ["HF_HOME"] = os.path.join(os.path.dirname(os.path.abspath(__file__)), "huggingface_cache")
+os.environ["TRANSFORMERS_CACHE"] = os.environ["HF_HOME"]
 os.environ["HF_HUB_VERBOSITY"] = "error"
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
