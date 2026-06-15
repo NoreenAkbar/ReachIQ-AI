@@ -1,6 +1,6 @@
 import os
-os.environ["HF_HOME"] = "E:/Developer_Space/huggingface_cache"
-os.environ["TRANSFORMERS_CACHE"] = "E:/Developer_Space/huggingface_cache"
+os.environ["HF_HOME"] = os.path.join(os.path.dirname(os.path.abspath(__file__)), "huggingface_cache")
+os.environ["TRANSFORMERS_CACHE"] = os.environ["HF_HOME"]
 os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
 
 import json
@@ -25,7 +25,8 @@ def get_qdrant_client():
     global _qdrant_client
     if _qdrant_client is None:
         _qdrant_client = QdrantClient(
-            path="E:/Developer_Space/youtube-ai-agent/qdrant_storage"
+    path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "qdrant_storage")
+
         )
     return _qdrant_client
 
@@ -58,7 +59,7 @@ mem0_config = {
         "provider": "qdrant",
         "config": {
             "collection_name": "reachiq_memory",
-            "path": "E:/Developer_Space/youtube-ai-agent/qdrant_mem0",
+            "path": os.path.join(os.path.dirname(os.path.abspath(__file__)), "qdrant_mem0"),
             "embedding_model_dims": 384
         }
     }

@@ -71,7 +71,15 @@ REST_URL = "https://app.band.ai"
 
 
 def load_agent_config(name):
-    """Load agent_id/api_key for a given agent block from agent_config.yaml"""
+    # Try Streamlit secrets first (cloud deployment)
+    try:
+        import streamlit as st
+        agent_id = st.secrets["band"][name]["agent_id"]
+        api_key = st.secrets["band"][name]["api_key"]
+        return agent_id, api_key
+    except Exception:
+        pass
+    # Fallback to local yaml (local development)
     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     block = cfg.get(name)

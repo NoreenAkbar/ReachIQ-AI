@@ -128,9 +128,10 @@ div[data-testid="stExpander"] summary{color:#f1f5f9 !important;
 
 # ── SIDEBAR ──────────────────────────────────────────────
 with st.sidebar:
+    st.image("reachiq-logo.png", width=120)
     st.markdown(
         "<h1 style='color:#0ea5e9;font-size:22px;"
-        "font-weight:900;margin:0;'>🚀 ReachIQ AI</h1>",
+        "font-weight:900;margin:0;'> ReachIQ AI</h1>",
         unsafe_allow_html=True
     )
     st.markdown(
@@ -155,7 +156,7 @@ with st.sidebar:
             "System Diagnostics"
         ],
         # Clean modern icons that replace your emojis perfectly
-        icons=["house", "search","hands" "image", "activity", "share", "database", "shield-check", "gear"], 
+        icons=["house", "search","people-fill" "image", "activity", "share", "database", "shield-check", "gear"], 
         menu_icon="compass", 
         default_index=2, # Automatically opens your active Thumbnail Analysis page on bootup
         styles={
@@ -959,18 +960,16 @@ elif "Thumbnail" in page:
                       ]
                     }"""
                 else:
-                    # RUN LIVE OLLAMA GENERATION
-                    import ollama
-                    response = ollama.chat(
-                        model="llava:7b",
-                        options={
-                            "num_predict": 1000, # 🚀 CRITICAL FIX: Increased token headroom so it never cuts off at 'emotiona'
-                            "temperature": 0.1
-                        },
-                        messages=[{
-                            "role": "user",
-                            "content": """You are analyzing a YouTube thumbnail.
-Look carefully at the image and provide detailed analysis.
+                    import base64
+
+                    with open(tmp_path, "rb") as img_file:
+                        img_b64 = base64.b64encode(img_file.read()).decode("utf-8")
+
+                    ext = uploaded.name.split(".")[-1].lower()
+                    media_type = f"image/{'jpeg' if ext in ['jpg','jpeg'] else 'png'}"
+                    data_url = f"data:{media_type};base64,{img_b64}"
+
+                    thumb_prompt = """Analyze this YouTube thumbnail.
 Return ONLY this JSON structure with no extra text:
 {
   "visibility_score": 7,
@@ -983,90 +982,75 @@ Return ONLY this JSON structure with no extra text:
     "specific improvement 2",
     "specific improvement 3"
   ]
-}""",
-                            "images": [tmp_path]
-                        }]
-                    )
-                    raw = response["message"]["content"]
-                
-                _os.unlink(tmp_path)
+}"""
 
-                # 🚀 ROBUST PARSING FIX USING JSON_REPAIR
+                raw = None
+
+                # PRIMARY: Groq vision (free)
                 try:
-                    clean = raw.strip()
-                    for sep in ["```json","```"]:
-                        if sep in clean:
-                            parts = clean.split(sep)
-                            for p in parts:
-                                p = p.strip().rstrip("`")
-                                if p.startswith("{"):
-                                    clean = p
-                                    break
-                    thumb_data = json_repair.loads(clean)
-                except Exception as parse_err:
-                    # Safety structural fallback if json_repair fails
-                    thumb_data = {
-                        "visibility_score": 6,
-                        "text_readability": raw[:300],
-                        "emotional_impact": "Completed with system warnings.",
-                        "color_contrast": "Check log outputs.",
-                        "ctr_prediction": "4-6% estimated",
-                        "suggested_improvements": ["Increase mobile contrast asset sizing"]
-                    }
-
-                # ... Rest of your rendering code below (st.metrics, columns, etc.) stays EXACTLY the same ...
-                score = thumb_data.get("visibility_score", 6)
-                if not isinstance(score, (int, float)): score = 6
-                if score == 0: score = 6
-
-                color = "#059669" if score >= 7 else "#d97706" if score >= 5 else "#dc2626"
-
-                st.markdown("---")
-                st.markdown("### 📊 Analysis Results")
-
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    st.markdown(
-                        f"<div style='text-align:center; background:#111827; border-radius:12px; padding:20px; border:2px solid {color};'>"
-                        f"<div style='color:{color}; font-size:48px; font-weight:900;'>{score}/10</div>"
-                        f"<div style='color:#94a3b8; font-size:14px; margin-top:6px;'>Visibility Score</div></div>",
-                        unsafe_allow_html=True
+                    from groq import Groq as _Groq
+                    from config import GROQ_API_KEY
+                    _groq = _Groq(api_key=GROQ_API_KEY)
+                    _resp = _groq.chat.completions.create(
+                        model="meta-llama/llama-4-scout-17b-16e-instruct",
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {"type": "image_url", "image_url": {"url": data_url}},
+                                {"type": "text", "text": thumb_prompt}
+                            ]
+                        }],
+                        max_tokens=1000,
+                        temperature=0.1
                     )
-                with c2:
-                    st.markdown("**CTR Prediction:**")
-                    st.markdown(f"<div class='ok' style='font-size:18px; font-weight:900;'>{thumb_data.get('ctr_prediction', 'N/A')}</div>", unsafe_allow_html=True)
-                with c3:
-                    st.markdown("**Emotional Impact:**")
-                    st.info(thumb_data.get("emotional_impact", "N/A"))
+                    raw = _resp.choices[0].message.content
+                    print(">>> Thumbnail: Groq vision used")
+                except Exception as groq_err:
+                    print(f">>> Groq vision failed: {groq_err}. Trying AI/ML API...")
 
-                st.markdown("---")
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.markdown("**Text Readability:**")
-                    st.markdown(thumb_data.get("text_readability", "N/A"))
-                with c2:
-                    st.markdown("**Color Contrast:**")
-                    st.markdown(thumb_data.get("color_contrast", "N/A"))
+                # FALLBACK: AI/ML API meta-llama/Llama-Vision-Free (free, $0 credit)
+                if not raw:
+                    try:
+                        import httpx
+                        from config import AIML_API_KEY
+                        _aiml_resp = httpx.post(
+                            "https://api.aimlapi.com/v1/chat/completions",
+                            headers={
+                                "Authorization": f"Bearer {AIML_API_KEY}",
+                                "Content-Type": "application/json"
+                            },
+                            json={
+                                "model": "meta-llama/Llama-Vision-Free",
+                                "messages": [{
+                                    "role": "user",
+                                    "content": [
+                                        {"type": "image_url", "image_url": {"url": data_url}},
+                                        {"type": "text", "text": thumb_prompt}
+                                    ]
+                                }],
+                                "max_tokens": 1000,
+                                "temperature": 0.1
+                            },
+                            timeout=60
+                        )
+                        _aiml_data = _aiml_resp.json()
+                        raw = _aiml_data["choices"][0]["message"]["content"]
+                        print(">>> Thumbnail: AI/ML API fallback used")
+                    except Exception as aiml_err:
+                        print(f">>> AI/ML API also failed: {aiml_err}")
+                        raw = None
 
-                imps = thumb_data.get("suggested_improvements", [])
-                if imps:
-                    st.markdown("---")
-                    st.markdown("### 💡 Improvements")
-                    for i, imp in enumerate(imps):
-                        if imp:
-                            txt = imp.get("message", str(imp)) if isinstance(imp, dict) else str(imp)
-                            if txt.strip():
-                                st.markdown(f"<div class='warn'>› {txt}</div>", unsafe_allow_html=True)
-
+                if not raw:
+                    raise Exception("Both Groq and AI/ML API vision failed.")
             except Exception as e:
                 if _os.path.exists(tmp_path):
                     _os.unlink(tmp_path)
                 if "memory" in str(e).lower():
-                    st.warning("Not enough RAM for llava:7b locally. This feature runs on AMD GPU cloud in under 10 seconds.")
+                    st.warning("Not enough RAM for local model.")
                 else:
                     st.error(f"Analysis failed: {e}")
-            else:
-                    st.info("Upload a thumbnail image above to begin analysis.")
+    else:
+        st.info("Upload a thumbnail image above to begin analysis.")
   
 # PAGE 4: POST-UPLOAD MONITOR
 # ══════════════════════════════════════════════════════════
