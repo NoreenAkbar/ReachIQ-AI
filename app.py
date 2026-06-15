@@ -1080,8 +1080,15 @@ elif "Post-Upload" in page:
 
         if videos:
             options = {v["title"][:60]: v for v in videos}
+            st.markdown(
+                "<h4 style='color:white;'>🎬 Select Video</h4>",
+                unsafe_allow_html=True
+            )
+
             selected = st.selectbox(
-                "Select video:", list(options.keys())
+                "",
+                list(options.keys()),
+                label_visibility="collapsed"
             )
             run_opt = st.checkbox(
                 "🔄 Run 3-Pass Optimizer on Suggestions",
