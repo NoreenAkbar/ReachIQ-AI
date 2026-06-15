@@ -1080,8 +1080,7 @@ elif "Post-Upload" in page:
 
         if videos:
             options = {v["title"][:60]: v for v in videos}
-            st.markdown(
-                "<h4 style='color:white;'>🎬 Select Video</h4>",
+            st.markdown("<div style='font-size:14px; font-weight:600; color:white; margin-bottom:4px;'>Select Video</div>",
                 unsafe_allow_html=True
             )
 
