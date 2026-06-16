@@ -71,15 +71,7 @@ REST_URL = "https://app.band.ai"
 
 
 def load_agent_config(name):
-    # Try Streamlit secrets first (cloud deployment)
-    try:
-        import streamlit as st
-        agent_id = st.secrets["band"][name]["agent_id"]
-        api_key = st.secrets["band"][name]["api_key"]
-        return agent_id, api_key
-    except Exception:
-        pass
-    # Fallback to local yaml (local development)
+    """Load agent_id/api_key for a given agent block from agent_config.yaml"""
     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     block = cfg.get(name)
@@ -528,13 +520,6 @@ def drain_events():
 
 
 def send_task_to_band(task_text="START"):
-    import asyncio
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            asyncio.set_event_loop(asyncio.new_event_loop())
-    except RuntimeError:
-        asyncio.set_event_loop(asyncio.new_event_loop())
     if not ROOM_ID:
         _emit("System", "BAND_ROOM_ID not set.")
         return False
@@ -564,20 +549,12 @@ def send_task_to_band(task_text="START"):
         print(f">>> chain kickoff sent: {result}")
 
     if _bridge_loop and _bridge_loop.is_running():
+        future = asyncio.run_coroutine_threadsafe(_send(), _bridge_loop)
         try:
-            future = asyncio.run_coroutine_threadsafe(_send(), _bridge_loop)
             future.result(timeout=15)
         except Exception as e:
-            _emit("System", f"Send error: {e}")
-            # Try alternative approach
-            try:
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    f = executor.submit(asyncio.run, _send())
-                    f.result(timeout=15)
-            except Exception as e2:
-                _emit("System", f"Alternative send also failed: {e2}")
-                return False
+            print(f">>> kickoff error: {e}")
+            return False
     return True
 
 
