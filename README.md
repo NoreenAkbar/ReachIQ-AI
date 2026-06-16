@@ -182,7 +182,7 @@ Custom deployment — contact for pricing
 - [ ] n8n automation webhooks (daily auto-scheduling)
 - [ ] Next.js frontend rebuild
 - [ ] Mobile dashboard
-- [ ] Stripe billing integration
+- [ ] Payoneer billing integration
 - [ ] Multi-channel support
 
 ---
