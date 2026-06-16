@@ -960,15 +960,13 @@ elif "Thumbnail" in page:
                       ]
                     }"""
                 else:
-                    import base64
-                    with open(tmp_path, "rb") as img_file:
-                        img_b64 = base64.b64encode(img_file.read()).decode("utf-8")
-
-                    ext = uploaded.name.split(".")[-1].lower()
-                    media_type = f"image/{'jpeg' if ext in ['jpg','jpeg'] else 'png'}"
-                    data_url = f"data:{media_type};base64,{img_b64}"
-
-                    thumb_prompt = """Analyze this YouTube thumbnail.
+                        import base64
+                        with open(tmp_path, "rb") as img_file:
+                            img_b64 = base64.b64encode(img_file.read()).decode("utf-8")
+                        ext = uploaded.name.split(".")[-1].lower()
+                        media_type = f"image/{'jpeg' if ext in ['jpg','jpeg'] else 'png'}"
+                        data_url = f"data:{media_type};base64,{img_b64}"
+                        thumb_prompt = """Analyze this YouTube thumbnail.
 Return ONLY this JSON structure with no extra text:
 {
   "visibility_score": 7,
@@ -982,64 +980,59 @@ Return ONLY this JSON structure with no extra text:
     "specific improvement 3"
   ]
 }"""
-                    raw = None
-
-                # PRIMARY: Groq vision (free)
-                try:
-                    from groq import Groq as _Groq
-                    from config import GROQ_API_KEY
-                    _groq = _Groq(api_key=GROQ_API_KEY)
-                    _resp = _groq.chat.completions.create(
-                        model="meta-llama/llama-4-scout-17b-16e-instruct",
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {"type": "image_url", "image_url": {"url": data_url}},
-                                {"type": "text", "text": thumb_prompt}
-                            ]
-                        }],
-                        max_tokens=1000,
-                        temperature=0.1
-                    )
-                    raw = _resp.choices[0].message.content
-                    print(">>> Thumbnail: Groq vision used")
-                except Exception as groq_err:
-                    print(f">>> Groq vision failed: {groq_err}. Trying AI/ML API...")
-
-                # FALLBACK: AI/ML API meta-llama/Llama-Vision-Free (free, $0 credit)
-                if not raw:
-                    try:
-                        import httpx
-                        from config import AIML_API_KEY
-                        _aiml_resp = httpx.post(
-                            "https://api.aimlapi.com/v1/chat/completions",
-                            headers={
-                                "Authorization": f"Bearer {AIML_API_KEY}",
-                                "Content-Type": "application/json"
-                            },
-                            json={
-                                "model": "meta-llama/Llama-Vision-Free",
-                                "messages": [{
+                        raw = None
+                        try:
+                            from groq import Groq as _Groq
+                            from config import GROQ_API_KEY
+                            _groq = _Groq(api_key=GROQ_API_KEY)
+                            _resp = _groq.chat.completions.create(
+                                model="meta-llama/llama-4-scout-17b-16e-instruct",
+                                messages=[{
                                     "role": "user",
                                     "content": [
                                         {"type": "image_url", "image_url": {"url": data_url}},
                                         {"type": "text", "text": thumb_prompt}
                                     ]
                                 }],
-                                "max_tokens": 1000,
-                                "temperature": 0.1
-                            },
-                            timeout=60
-                        )
-                        _aiml_data = _aiml_resp.json()
-                        raw = _aiml_data["choices"][0]["message"]["content"]
-                        print(">>> Thumbnail: AI/ML API fallback used")
-                    except Exception as aiml_err:
-                        print(f">>> AI/ML API also failed: {aiml_err}")
-                        raw = None
-
-                if not raw:
-                    raise Exception("Both Groq and AI/ML API vision failed.")
+                                max_tokens=1000,
+                                temperature=0.1
+                            )
+                            raw = _resp.choices[0].message.content
+                            print(">>> Thumbnail: Groq vision used")
+                        except Exception as groq_err:
+                            print(f">>> Groq vision failed: {groq_err}. Trying AI/ML API...")
+                        if not raw:
+                            try:
+                                import httpx
+                                from config import AIML_API_KEY
+                                _aiml_resp = httpx.post(
+                                    "https://api.aimlapi.com/v1/chat/completions",
+                                    headers={
+                                        "Authorization": f"Bearer {AIML_API_KEY}",
+                                        "Content-Type": "application/json"
+                                    },
+                                    json={
+                                        "model": "meta-llama/Llama-Vision-Free",
+                                        "messages": [{
+                                            "role": "user",
+                                            "content": [
+                                                {"type": "image_url", "image_url": {"url": data_url}},
+                                                {"type": "text", "text": thumb_prompt}
+                                            ]
+                                        }],
+                                        "max_tokens": 1000,
+                                        "temperature": 0.1
+                                    },
+                                    timeout=60
+                                )
+                                _aiml_data = _aiml_resp.json()
+                                raw = _aiml_data["choices"][0]["message"]["content"]
+                                print(">>> Thumbnail: AI/ML API fallback used")
+                            except Exception as aiml_err:
+                                print(f">>> AI/ML API also failed: {aiml_err}")
+                                raw = None
+                        if not raw:
+                            raise Exception("Both Groq and AI/ML API vision failed.")
             except Exception as e:
                 if _os.path.exists(tmp_path):
                     _os.unlink(tmp_path)
