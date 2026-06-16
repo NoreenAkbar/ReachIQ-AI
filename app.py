@@ -943,7 +943,6 @@ elif "Thumbnail" in page:
 
         with st.spinner(spinner_text):
             try:
-                raw=None 
                 if fast_demo:
                     # 🚀 INSTANT MOCKUP: Simulates the exact JSON format you expect from LLaVA
                     import time
@@ -983,10 +982,9 @@ Return ONLY this JSON structure with no extra text:
     "specific improvement 3"
   ]
 }"""
+                    raw = None
 
                 # PRIMARY: Groq vision (free)
-                if fast_demo:
-                    raw = """mock json"""
                 try:
                     from groq import Groq as _Groq
                     from config import GROQ_API_KEY
