@@ -926,7 +926,7 @@ elif "Thumbnail" in page:
         st.image(uploaded, caption="Your thumbnail", width=400)
 
     # 🚀 HACKATHON SAVE: Add a toggle switch to bypass long CPU processing times during your pitch!
-        fast_demo = st.checkbox("⚡ Fast Demo Mode (Skip 2-5 min CPU wait)", value=False, key="thumbnail_fast_demo")
+        fast_demo = st.checkbox("⚡ Fast Demo Mode (Skip 2-5 min CPU wait)", value=True, key="thumbnail_fast_demo")
 
     if st.button("🔍 Analyze Thumbnail"):
         import tempfile
