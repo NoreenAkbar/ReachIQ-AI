@@ -739,7 +739,6 @@ elif "Band Live Coordination" in page:
     if not st.session_state.workflow_done:
         for _ in range(500):  # 5 min max
             new_events = drain_events()
-            st.caption(f"⏳ Waiting for agents... ({_}s elapsed)")
             if new_events:
                 st.session_state.band_log.extend(new_events)
                 with log_placeholder.container():
