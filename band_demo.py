@@ -72,12 +72,25 @@ REST_URL = "https://app.band.ai"
 
 def load_agent_config(name):
     """Load agent_id/api_key for a given agent block from agent_config.yaml"""
-    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
-    block = cfg.get(name)
-    if not block:
-        raise ValueError(f"Agent '{name}' not found in {CONFIG_FILE}")
-    return block["agent_id"], block["api_key"]
+    # Try Streamlit secrets first (cloud deployment)
+    try:
+        import streamlit as st
+        agent_id = st.secrets["band"][name]["agent_id"]
+        api_key = st.secrets["band"][name]["api_key"]
+        if agent_id and api_key:
+            return agent_id, api_key
+    except Exception:
+        pass
+    # Fallback to local yaml (local development)
+    try:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+        block = cfg.get(name)
+        if not block:
+            raise ValueError(f"Agent '{name}' not found in {CONFIG_FILE}")
+        return block["agent_id"], block["api_key"]
+    except Exception as e:
+        raise ValueError(f"Could not load config for '{name}': {e}")
 
 
 # ─────────────────────────────────────────────
