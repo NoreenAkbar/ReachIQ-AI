@@ -5,7 +5,7 @@ load_dotenv()
 def _get(key):
     try:
         import streamlit as st
-        return st.secrets.get("general", {}).get(key) or os.getenv(key)
+        return st.secrets["general"][key] if "general" in st.secrets and key in st.secrets["general"] else os.getenv(key)
     except Exception:
         return os.getenv(key)
 
