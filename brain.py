@@ -1,7 +1,11 @@
 import os
 import time
 from groq import Groq
-import ollama
+try:
+    import ollama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    OLLAMA_AVAILABLE = False
 from config import GROQ_API_KEY
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -51,6 +55,8 @@ def _call_groq(prompt, model, retries=3):
 
 
 def _call_ollama(prompt, model):
+    if not OLLAMA_AVAILABLE:
+        return None
     try:
         response = ollama.chat(
             model=model,
