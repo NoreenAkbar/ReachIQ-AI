@@ -528,6 +528,13 @@ def drain_events():
 
 
 def send_task_to_band(task_text="START"):
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            asyncio.set_event_loop(asyncio.new_event_loop())
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
     if not ROOM_ID:
         _emit("System", "BAND_ROOM_ID not set.")
         return False
@@ -557,12 +564,20 @@ def send_task_to_band(task_text="START"):
         print(f">>> chain kickoff sent: {result}")
 
     if _bridge_loop and _bridge_loop.is_running():
-        future = asyncio.run_coroutine_threadsafe(_send(), _bridge_loop)
         try:
+            future = asyncio.run_coroutine_threadsafe(_send(), _bridge_loop)
             future.result(timeout=15)
         except Exception as e:
-            print(f">>> kickoff error: {e}")
-            return False
+            _emit("System", f"Send error: {e}")
+            # Try alternative approach
+            try:
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    f = executor.submit(asyncio.run, _send())
+                    f.result(timeout=15)
+            except Exception as e2:
+                _emit("System", f"Alternative send also failed: {e2}")
+                return False
     return True
 
 
