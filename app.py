@@ -852,9 +852,9 @@ elif "Band Live Coordination" in page:
                                 f"<div class='warn'>› {imp}</div>",
                                 unsafe_allow_html=True
                             )
-                    st.success(
-                        f"🖼️ Thumbnail Text: {analyzer_r['thumbnail_text']}"
-                    )
+                   # st.success(
+                    #    f"🖼️ Thumbnail Text: {analyzer_r['thumbnail_text']}"
+                    #)
                 if analyzer_r.get("updated_description"):
                     st.markdown("**Updated Description:**")
                     st.text_area("Copy this",
