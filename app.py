@@ -832,8 +832,11 @@ elif "Band Live Coordination" in page:
                     st.markdown("**🖼️ Thumbnail Analysis:**")
                     c1, c2, c3 = st.columns(3)
                     with c1:
-                        st.metric("Visibility Score",
-                                  f"{thumb_analysis.get('visibility_score', 0)}/10")
+                        score = thumb_analysis.get('visibility_score', 0)
+                        if isinstance(score, (int, float)) and score > 10:
+                            st.metric("Visibility Score", f"{score}/100")
+                        else:
+                            st.metric("Visibility Score", f"{score}/10")
                     with c2:
                         st.metric("CTR Prediction",
                                   thumb_analysis.get("ctr_prediction", "N/A"))
