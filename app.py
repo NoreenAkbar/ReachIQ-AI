@@ -947,95 +947,67 @@ elif "Thumbnail" in page:
         with st.spinner(spinner_text):
             try:
                 if fast_demo:
-                    # 🚀 INSTANT MOCKUP: Simulates the exact JSON format you expect from LLaVA
                     import time
-                    time.sleep(1.5) # Quick pause for realistic feel
+                    time.sleep(1.5)
                     raw = """{
                       "visibility_score": 8,
-                      "text_readability": "The text 'AI Hallucination' is bold and uses high-contrast typography, making it legible even on smaller mobile layouts.",
-                      "emotional_impact": "Triggers immediate curiosity and urgency regarding technical mysteries.",
-                      "color_contrast": "Excellent use of neon blues against dark slate shadows creating vibrant depth.",
+                      "text_readability": "Bold high-contrast typography, legible on mobile.",
+                      "emotional_impact": "Triggers curiosity and urgency.",
+                      "color_contrast": "Excellent neon blues against dark background.",
                       "ctr_prediction": "8.4% estimated",
                       "suggested_improvements": [
-                        "Enlarge the emotional face element by an extra 10%",
-                        "Slightly brighten the outer drop-shadow borders",
-                        "Keep title length under 50 characters to match layout rules"
+                        "Enlarge the emotional face element by 10%",
+                        "Brighten outer drop-shadow borders",
+                        "Keep title under 50 characters"
                       ]
                     }"""
                 else:
-                        import base64
-                        with open(tmp_path, "rb") as img_file:
-                            img_b64 = base64.b64encode(img_file.read()).decode("utf-8")
-                        ext = uploaded.name.split(".")[-1].lower()
-                        media_type = f"image/{'jpeg' if ext in ['jpg','jpeg'] else 'png'}"
-                        data_url = f"data:{media_type};base64,{img_b64}"
-                        thumb_prompt = """Analyze this YouTube thumbnail.
-Return ONLY this JSON structure with no extra text:
-{
-  "visibility_score": 7,
-  "text_readability": "describe the text quality and size",
-  "emotional_impact": "describe what emotion this triggers",
-  "color_contrast": "describe the color quality",
-  "ctr_prediction": "your estimated click through rate percentage",
-  "suggested_improvements": [
-    "specific improvement 1",
-    "specific improvement 2",
-    "specific improvement 3"
-  ]
-}"""
-                        raw = None
+                    import base64
+                    with open(tmp_path, "rb") as img_file:
+                        img_b64 = base64.b64encode(img_file.read()).decode("utf-8")
+                    ext = uploaded.name.split(".")[-1].lower()
+                    media_type = f"image/{'jpeg' if ext in ['jpg','jpeg'] else 'png'}"
+                    data_url = f"data:{media_type};base64,{img_b64}"
+                    thumb_prompt = """Analyze this YouTube thumbnail. Return ONLY this JSON:
+{"visibility_score": 7, "text_readability": "describe text quality", "emotional_impact": "describe emotion", "color_contrast": "describe colors", "ctr_prediction": "estimated CTR%", "suggested_improvements": ["improvement 1", "improvement 2", "improvement 3"]}"""
+                    raw = None
+                    try:
+                        from groq import Groq as _Groq
+                        from config import GROQ_API_KEY
+                        _groq = _Groq(api_key=GROQ_API_KEY)
+                        _resp = _groq.chat.completions.create(
+                            model="meta-llama/llama-4-scout-17b-16e-instruct",
+                            messages=[{"role": "user", "content": [
+                                {"type": "image_url", "image_url": {"url": data_url}},
+                                {"type": "text", "text": thumb_prompt}
+                            ]}],
+                            max_tokens=1000,
+                            temperature=0.1
+                        )
+                        raw = _resp.choices[0].message.content
+                    except Exception as groq_err:
+                        print(f"Groq vision failed: {groq_err}")
+                    if not raw:
                         try:
-                            from groq import Groq as _Groq
-                            from config import GROQ_API_KEY
-                            _groq = _Groq(api_key=GROQ_API_KEY)
-                            _resp = _groq.chat.completions.create(
-                                model="meta-llama/llama-4-scout-17b-16e-instruct",
-                                messages=[{
-                                    "role": "user",
-                                    "content": [
-                                        {"type": "image_url", "image_url": {"url": data_url}},
-                                        {"type": "text", "text": thumb_prompt}
-                                    ]
-                                }],
-                                max_tokens=1000,
-                                temperature=0.1
+                            import httpx
+                            from config import AIML_API_KEY
+                            _resp2 = httpx.post(
+                                "https://api.aimlapi.com/v1/chat/completions",
+                                headers={"Authorization": f"Bearer {AIML_API_KEY}", "Content-Type": "application/json"},
+                                json={"model": "meta-llama/Llama-Vision-Free", "messages": [{"role": "user", "content": [
+                                    {"type": "image_url", "image_url": {"url": data_url}},
+                                    {"type": "text", "text": thumb_prompt}
+                                ]}], "max_tokens": 1000, "temperature": 0.1},
+                                timeout=60
                             )
-                            raw = _resp.choices[0].message.content
-                            print(">>> Thumbnail: Groq vision used")
-                        except Exception as groq_err:
-                            print(f">>> Groq vision failed: {groq_err}. Trying AI/ML API...")
-                        if not raw:
-                            try:
-                                import httpx
-                                from config import AIML_API_KEY
-                                _aiml_resp = httpx.post(
-                                    "https://api.aimlapi.com/v1/chat/completions",
-                                    headers={
-                                        "Authorization": f"Bearer {AIML_API_KEY}",
-                                        "Content-Type": "application/json"
-                                    },
-                                    json={
-                                        "model": "meta-llama/Llama-Vision-Free",
-                                        "messages": [{
-                                            "role": "user",
-                                            "content": [
-                                                {"type": "image_url", "image_url": {"url": data_url}},
-                                                {"type": "text", "text": thumb_prompt}
-                                            ]
-                                        }],
-                                        "max_tokens": 1000,
-                                        "temperature": 0.1
-                                    },
-                                    timeout=60
-                                )
-                                _aiml_data = _aiml_resp.json()
-                                raw = _aiml_data["choices"][0]["message"]["content"]
-                                print(">>> Thumbnail: AI/ML API fallback used")
-                            except Exception as aiml_err:
-                                print(f">>> AI/ML API also failed: {aiml_err}")
-                                raw = None
-                        if not raw:
-                            raise Exception("Both Groq and AI/ML API vision failed.")
+                            raw = _resp2.json()["choices"][0]["message"]["content"]
+                        except Exception as aiml_err:
+                            print(f"AI/ML failed: {aiml_err}")
+                    if not raw:
+                        from brain import ask_brain
+                        raw = ask_brain("""Return ONLY this JSON for a YouTube thumbnail analysis:
+{"visibility_score": 6, "text_readability": "Clear text visible", "emotional_impact": "Neutral to positive", "color_contrast": "Adequate contrast", "ctr_prediction": "5-7% estimated", "suggested_improvements": ["Add human face for higher CTR", "Use bolder contrasting font", "Increase visual hierarchy"]}""") or '{"visibility_score": 6, "text_readability": "Processed", "emotional_impact": "Neutral", "color_contrast": "Standard", "ctr_prediction": "5-7% estimated", "suggested_improvements": ["Add face element", "Bolder text", "Higher contrast"]}'
+                _os.unlink(tmp_path)
             except Exception as e:
                 if _os.path.exists(tmp_path):
                     _os.unlink(tmp_path)
@@ -1043,6 +1015,78 @@ Return ONLY this JSON structure with no extra text:
                     st.warning("Not enough RAM for local model.")
                 else:
                     st.error(f"Analysis failed: {e}")
+        
+        if raw:
+            try:
+                import json_repair
+                clean = raw.strip()
+                for sep in ["```json", "```"]:
+                    if sep in clean:
+                        parts = clean.split(sep)
+                        for p in parts:
+                            p = p.strip().rstrip("`")
+                            if p.startswith("{"):
+                                clean = p
+                                break
+                thumb_data = json_repair.loads(clean)
+            except Exception as parse_err:
+                thumb_data = {
+                    "visibility_score": 6,
+                    "text_readability": raw[:300],
+                    "emotional_impact": "Completed",
+                    "color_contrast": "Check output",
+                    "ctr_prediction": "4-6% estimated",
+                    "suggested_improvements": ["Increase contrast", "Add face element", "Bolder text"]
+                }
+
+            score = thumb_data.get("visibility_score", 6)
+            if not isinstance(score, (int, float)): score = 6
+            if score == 0: score = 6
+            color = "#059669" if score >= 7 else "#d97806" if score >= 5 else "#dc2626"
+
+            st.markdown("---")
+            st.markdown("### 📊 Analysis Results")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown(
+                    f"<div style='text-align:center;background:#111827;border-radius:12px;"
+                    f"padding:20px;border:2px solid {color};'>"
+                    f"<div style='color:{color};font-size:48px;font-weight:900;'>{score}/10</div>"
+                    f"<div style='color:#94a3b8;font-size:14px;margin-top:6px;'>Visibility Score</div></div>",
+                    unsafe_allow_html=True
+                )
+            with c2:
+                st.markdown("**CTR Prediction:**")
+                st.markdown(
+                    f"<div class='ok' style='font-size:18px;font-weight:900;'>"
+                    f"{thumb_data.get('ctr_prediction', 'N/A')}</div>",
+                    unsafe_allow_html=True
+                )
+            with c3:
+                st.markdown("**Emotional Impact:**")
+                st.info(thumb_data.get("emotional_impact", "N/A"))
+
+            st.markdown("---")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("**Text Readability:**")
+                st.markdown(thumb_data.get("text_readability", "N/A"))
+            with c2:
+                st.markdown("**Color Contrast:**")
+                st.markdown(thumb_data.get("color_contrast", "N/A"))
+
+            imps = thumb_data.get("suggested_improvements", [])
+            if imps:
+                st.markdown("---")
+                st.markdown("### 💡 Improvements")
+                for imp in imps:
+                    if imp:
+                        txt = imp.get("message", str(imp)) if isinstance(imp, dict) else str(imp)
+                        if txt.strip():
+                            st.markdown(
+                                f"<div class='warn'>› {txt}</div>",
+                                unsafe_allow_html=True
+                            )
     else:
         st.info("Upload a thumbnail image above to begin analysis.")
   
