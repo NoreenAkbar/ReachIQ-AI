@@ -6,12 +6,54 @@ import os
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-def generate_updated_metadata(video_title, current_description, 
+def generate_updated_metadata(video_title, current_description,
                                current_tags, analytics_data=None):
     """
     Generates complete ready-to-paste metadata update
-    for a video based on performance data.
+    using channel history + niche top videos comparison.
     """
+    from keyword_tracker import extract_keywords, find_competing_videos
+    import os
+
+    # Load channel history for intelligence
+    channel_context = ""
+    db_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "performance_history.json")
+    if os.path.exists(db_file):
+        with open(db_file, "r", encoding="utf-8") as f:
+            try:
+                history = json.load(f)
+                if history:
+                    channel_context = "CHANNEL HISTORY:\n"
+                    for h in history[-5:]:
+                        channel_context += (
+                            f"- '{h.get('title','')}': "
+                            f"{h.get('views',0)} views, "
+                            f"{h.get('performance_level','unknown')} performance, "
+                            f"tags: {', '.join(h.get('updated_tags',[])[:3])}\n"
+                        )
+            except:
+                pass
+
+    # Fetch niche top videos for comparison
+    niche_context = ""
+    try:
+        keywords = extract_keywords(video_title)
+        if keywords and isinstance(keywords, dict):
+            primary_kw = keywords.get("primary_keywords", [])
+            if primary_kw:
+                competitors = find_competing_videos(
+                    primary_kw[0], max_results=5
+                )
+                if competitors:
+                    niche_context = "TOP NICHE VIDEOS:\n"
+                    for c in competitors:
+                        niche_context += (
+                            f"- '{c.get('title','')}' "
+                            f"by {c.get('channel','')}\n"
+                        )
+    except Exception as e:
+        print(f"Niche fetch note: {e}")
 
     analytics_section = ""
     if analytics_data and isinstance(analytics_data, dict):
@@ -22,13 +64,20 @@ Watch Time: {analytics_data.get('watch_time_minutes', 0)} minutes
 Avg View Duration: {analytics_data.get('avg_view_duration_seconds', 0)} seconds
 Avg View Percentage: {analytics_data.get('avg_view_percentage', 0)}%
 Subscribers Gained: {analytics_data.get('subscribers_gained', 0)}
+Likes: {analytics_data.get('likes', 0)}
+Comments: {analytics_data.get('comments', 0)}
 """
 
     prompt = f"""
-You are ReachIQ AI generating optimized YouTube metadata.
+You are ReachIQ AI — elite YouTube growth strategist.
 
-Create complete ready-to-use metadata that will improve this video's performance.
-Be specific, practical, and YouTube algorithm friendly.
+Generate highly optimized metadata by analyzing:
+1. This video's current performance
+2. Channel's historical patterns
+3. What top niche videos are doing
+
+Be specific, creative, and different from generic advice.
+Every field must be tailored to THIS channel and THIS niche.
 
 Return ONLY valid JSON, no extra text, no markdown.
 
@@ -40,31 +89,31 @@ FORMAT:
   "thumbnail_text": "",
   "pinned_comment": "",
   "end_screen_suggestion": "",
+  "hook_for_description": "",
   "update_priority": "",
-  "expected_improvement": ""
+  "expected_improvement": "",
+  "why_this_will_work": ""
 }}
 
 Rules for description:
-- First 2 lines must be hook lines people see before clicking more
+- First 2 lines must be powerful hook lines
 - Include timestamps if possible
-- - Include relevant links section but ONLY use these verified links:
-  ChatGPT: https://chat.openai.com
-  Claude: https://claude.ai
-  Gemini: https://gemini.google.com
-  Do not invent or guess any other URLs
-- Include hashtags at the bottom
+- Include relevant links ONLY: ChatGPT: https://chat.openai.com, Claude: https://claude.ai, Gemini: https://gemini.google.com
+- Include hashtags at bottom
 - Maximum 500 words
 
 Rules for tags:
-- Mix of broad and specific tags
+- Mix broad and specific tags
 - Include long tail keywords
-- Maximum 15 tags
-- Each tag maximum 3 words
+- Maximum 15 tags, each max 3 words
 
 VIDEO TITLE: {video_title}
 CURRENT DESCRIPTION: {current_description}
 CURRENT TAGS: {current_tags}
 {analytics_section}
+{channel_context}
+{niche_context}
+ANALYSIS RUN: {datetime.datetime.now().isoformat()}
 """
 
     print(f"Generating updated metadata for: {video_title}")
