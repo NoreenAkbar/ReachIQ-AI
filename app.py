@@ -1545,21 +1545,52 @@ elif "Memory" in page:
                             "get_smart_suggestions"
                         ](context)
                     if sugg and isinstance(sugg, dict):
-                        for s in sugg.get(
-                                "smart_suggestions",[]):
-                            st.markdown(f"› {s}")
-                        pred = sugg.get(
-                            "predicted_best_topic",""
-                        )
+                        focus = sugg.get("this_run_focus","")
+                        if focus:
+                            st.markdown(f"**🎯 This Run Focus:** `{focus}`")
+
+                        st.markdown("**💡 Smart Suggestions:**")
+                        for s in sugg.get("smart_suggestions",[]):
+                            st.markdown(f"<div class='pass-box'>› {s}</div>", unsafe_allow_html=True)
+
+                        title_works = sugg.get("title_patterns_that_work",[])
+                        if title_works:
+                            st.markdown("**✅ Title Patterns That Work:**")
+                            for t in title_works[:3]:
+                                st.markdown(f"<div class='ok'>✅ {t}</div>", unsafe_allow_html=True)
+
+                        title_avoid = sugg.get("title_patterns_to_avoid",[])
+                        if title_avoid:
+                            st.markdown("**❌ Title Patterns To Avoid:**")
+                            for t in title_avoid[:2]:
+                                st.markdown(f"<div class='fail'>❌ {t}</div>", unsafe_allow_html=True)
+
+                        thumb = sugg.get("best_thumbnail_approach","")
+                        if thumb:
+                            st.markdown("**🖼️ Thumbnail Approach:**")
+                            st.info(thumb)
+
+                        hook = sugg.get("hook_recommendation","")
+                        if hook:
+                            st.markdown("**🎣 Hook Recommendation:**")
+                            st.info(hook)
+
+                        pred = sugg.get("predicted_best_topic","")
                         if pred:
-                            st.success(
-                                f"**Best Topic:** {pred}"
-                            )
+                            st.success(f"🏆 Best Topic: {pred}")
+
+                        strength = sugg.get("channel_strength","")
+                        weakness = sugg.get("channel_weakness","")
+                        if strength or weakness:
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if strength:
+                                    st.markdown(f"<div class='ok'>💪 {strength}</div>", unsafe_allow_html=True)
+                            with col2:
+                                if weakness:
+                                    st.markdown(f"<div class='warn'>⚠️ {weakness}</div>", unsafe_allow_html=True)
                     else:
-                        st.info(
-                            "Run more analyses to "
-                            "build memory first."
-                        )
+                        st.info("Run post-upload analysis first to build channel memory.")
 
 
 # ══════════════════════════════════════════════════════════
