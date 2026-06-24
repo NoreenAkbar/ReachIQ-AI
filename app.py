@@ -142,6 +142,9 @@ with st.sidebar:
     st.markdown("---")
 
     # 🚀 REPLACED ST.SELECTBOX WITH THE ULTIMATE VISIBILITY LINK ENGINE
+    st.session_state["main_nav"] = "Overview"
+    if "main_nav" not in st.session_state:
+        st.session_state["main_nav"] = "Overview"
     page = option_menu(
         menu_title="Navigate", 
         options=[
@@ -158,8 +161,10 @@ with st.sidebar:
         # Clean modern icons that replace your emojis perfectly
         icons=["house", "search","people-fill","image", "activity", "share", "database", "shield-check", "gear"], 
         menu_icon="compass", 
+        
         default_index=0,
         key="main_nav",
+        
         styles={
             "container": {"background-color": "#020617", "padding": "0px !important"},
             "icon": {"color": "#0ea5e9", "font-size": "14px"}, 
