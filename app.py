@@ -1284,6 +1284,39 @@ elif "Post-Upload" in page:
                     if pinned:
                         st.markdown("**Pinned Comment Suggestion:**")
                         st.info(pinned)
+                    hook_desc = metadata.get("hook_for_description","")
+                    if hook_desc:
+                        st.markdown("**🎣 Description Hook:**")
+                        st.info(hook_desc)
+
+                    why_works = metadata.get("why_this_will_work","")
+                    if why_works:
+                        st.markdown("**🧠 Why This Will Work:**")
+                        st.markdown(
+                            f"<div class='ok'>💡 {why_works}</div>",
+                            unsafe_allow_html=True
+                        )
+
+                    end_screen = metadata.get("end_screen_suggestion","")
+                    if end_screen:
+                        st.markdown("**📺 End Screen Suggestion:**")
+                        st.info(end_screen)
+
+                    # Auto-store full performance data
+                    try:
+                        from memory import store_video_performance
+                        store_video_performance(
+                            video_id=video["video_id"],
+                            title=video["title"],
+                            stats=stats if isinstance(stats, dict) else {},
+                            suggestions=metadata
+                        )
+                        st.markdown(
+                            "<div class='ok'>✅ Performance data stored to channel memory</div>",
+                            unsafe_allow_html=True
+                        )
+                    except Exception as mem_err:
+                        print(f"Memory store note: {mem_err}")    
 
                     if run_opt and suggested_title:
                         st.markdown("---")
