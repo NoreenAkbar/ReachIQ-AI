@@ -158,7 +158,7 @@ with st.sidebar:
         # Clean modern icons that replace your emojis perfectly
         icons=["house", "search","people-fill","image", "activity", "share", "database", "shield-check", "gear"], 
         menu_icon="compass", 
-        default_index=2, # Automatically opens your active Thumbnail Analysis page on bootup
+        default_index=0, # Automatically opens your active Thumbnail Analysis page on bootup
         styles={
             "container": {"background-color": "#020617", "padding": "0px !important"},
             "icon": {"color": "#0ea5e9", "font-size": "14px"}, 
