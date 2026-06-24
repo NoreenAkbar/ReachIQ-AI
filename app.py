@@ -1481,31 +1481,49 @@ elif "Memory" in page:
             with st.spinner("Loading memory..."):
                 patterns = mods["get_channel_patterns"]()
             if patterns and isinstance(patterns, dict):
-                st.markdown("**Best Topics:**")
-                for t in patterns.get(
-                        "best_performing_topics",[]):
-                    st.markdown(
-                        f"<div class='ok'>✅ {t}</div>",
-                        unsafe_allow_html=True
-                    )
-                st.markdown("**Avoid These:**")
-                for t in patterns.get(
-                        "worst_performing_topics",[]):
-                    st.markdown(
-                        f"<div class='fail'>❌ {t}</div>",
-                        unsafe_allow_html=True
-                    )
-                st.markdown("**Recommended Next:**")
-                for t in patterns.get(
-                        "recommended_next_topics",[])[:3]:
-                    st.markdown(
-                        f"<div class='warn'>💡 {t}</div>",
-                        unsafe_allow_html=True
-                    )
-                st.info(
-                    "Key Learning: "
-                    + patterns.get("key_learning","")
-                )
+                st.markdown("**✅ Best Topics:**")
+                for t in patterns.get("best_performing_topics",[]):
+                    st.markdown(f"<div class='ok'>✅ {t}</div>", unsafe_allow_html=True)
+
+                st.markdown("**❌ Avoid These:**")
+                for t in patterns.get("worst_performing_topics",[]):
+                    st.markdown(f"<div class='fail'>❌ {t}</div>", unsafe_allow_html=True)
+
+                st.markdown("**💡 Recommended Next:**")
+                for t in patterns.get("recommended_next_topics",[])[:3]:
+                    st.markdown(f"<div class='warn'>💡 {t}</div>", unsafe_allow_html=True)
+
+                st.markdown("**🎯 Optimal Title Patterns:**")
+                for t in patterns.get("optimal_title_patterns",[])[:3]:
+                    st.markdown(f"<div class='pass-box'>› {t}</div>", unsafe_allow_html=True)
+
+                st.markdown("**🏷️ Best Tags Discovered:**")
+                tags_found = patterns.get("best_tags_discovered",[])
+                if tags_found:
+                    st.markdown(" ".join([f"`{t}`" for t in tags_found[:8]]))
+
+                st.markdown("**🖼️ Thumbnail Patterns That Work:**")
+                for t in patterns.get("thumbnail_patterns_that_work",[])[:2]:
+                    st.info(t)
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    strength = patterns.get("biggest_strength","")
+                    if strength:
+                        st.markdown("**💪 Channel Strength:**")
+                        st.markdown(f"<div class='ok'>{strength}</div>", unsafe_allow_html=True)
+                with col2:
+                    weakness = patterns.get("biggest_weakness","")
+                    if weakness:
+                        st.markdown("**⚠️ Biggest Weakness:**")
+                        st.markdown(f"<div class='warn'>{weakness}</div>", unsafe_allow_html=True)
+
+                immediate = patterns.get("immediate_action","")
+                if immediate:
+                    st.markdown("**⚡ Immediate Action:**")
+                    st.markdown(f"<div class='fail' style='border-color:#0ea5e9;color:#0ea5e9;'>🎯 {immediate}</div>", unsafe_allow_html=True)
+
+                st.info("Key Learning: " + patterns.get("key_learning",""))
             else:
                 st.info(
                     "Not enough data yet. "
