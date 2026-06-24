@@ -4,17 +4,63 @@ import json
 
 def analyze_pre_upload(title, description, tags, script=None):
     """
-    Analyzes content before you upload.
-    Scores title, description, tags, hook, and thumbnail suggestion.
+    Analyzes content before upload using channel history
+    + niche top videos comparison.
     """
+    from keyword_tracker import find_competing_videos, extract_keywords
+    import os
+    import datetime
 
     script_section = f"\nSCRIPT EXCERPT:\n{script[:500]}" if script else ""
 
-    prompt = f"""
-You are ReachIQ AI, an elite YouTube growth strategist.
+    # Load channel history
+    channel_context = ""
+    db_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "performance_history.json")
+    if os.path.exists(db_file):
+        with open(db_file, "r", encoding="utf-8") as f:
+            try:
+                history = json.load(f)
+                if history:
+                    channel_context = "CHANNEL HISTORY:\n"
+                    for h in history[-5:]:
+                        channel_context += (
+                            f"- '{h.get('title','')}': "
+                            f"{h.get('views',0)} views, "
+                            f"{h.get('performance_level','unknown')} performance\n"
+                        )
+            except:
+                pass
 
-Analyze this video content before upload.
-Give honest, specific, actionable feedback.
+    # Fetch niche top videos
+    niche_context = ""
+    try:
+        keywords = extract_keywords(title, description)
+        if keywords and isinstance(keywords, dict):
+            primary_kw = keywords.get("primary_keywords", [])
+            if primary_kw:
+                competitors = find_competing_videos(
+                    primary_kw[0], max_results=5
+                )
+                if competitors:
+                    niche_context = "TOP NICHE VIDEOS:\n"
+                    for c in competitors:
+                        niche_context += (
+                            f"- '{c.get('title','')}' "
+                            f"by {c.get('channel','')}\n"
+                        )
+    except Exception as e:
+        print(f"Niche fetch note: {e}")
+
+    prompt = f"""
+You are ReachIQ AI — elite YouTube growth strategist.
+
+Analyze this video BEFORE upload by comparing against:
+1. This channel's historical performance patterns
+2. What top niche videos are doing right now
+
+Be brutally honest and specific. Every weakness must have a fix.
+Never give generic advice — base everything on the niche and channel data provided.
 
 Return ONLY valid JSON, no extra text, no markdown.
 
@@ -24,7 +70,8 @@ FORMAT:
     "score": 0,
     "weaknesses": [],
     "improved_titles": [],
-    "best_title": ""
+    "best_title": "",
+    "vs_niche": ""
   }},
   "description_analysis": {{
     "score": 0,
@@ -40,13 +87,18 @@ FORMAT:
   "thumbnail_text": "",
   "overall_score": 0,
   "upload_ready": true,
-  "top_3_actions": []
+  "top_3_actions": [],
+  "niche_gap_opportunity": "",
+  "channel_pattern_insight": ""
 }}
 
 TITLE: {title}
 DESCRIPTION: {description}
 TAGS: {tags}
 {script_section}
+{channel_context}
+{niche_context}
+ANALYSIS RUN: {datetime.datetime.now().isoformat()}
 """
 
     print("ReachIQ AI analyzing your content...")
