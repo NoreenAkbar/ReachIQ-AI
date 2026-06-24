@@ -115,11 +115,19 @@ def store_video_performance(video_id, title,
         "stats": stats if isinstance(stats, dict) else {},
         "suggestions": suggestions if isinstance(
             suggestions, dict) else {},
-        "views": stats.get("views", 0) if isinstance(
-            stats, dict) else 0,
-        "watch_time": stats.get(
-            "watch_time_minutes", 0) if isinstance(
-            stats, dict) else 0
+        "views": stats.get("views", 0) if isinstance(stats, dict) else 0,
+        "likes": stats.get("likes", 0) if isinstance(stats, dict) else 0,
+        "comments": stats.get("comments", 0) if isinstance(stats, dict) else 0,
+        "watch_time": stats.get("watch_time_minutes", 0) if isinstance(stats, dict) else 0,
+        "avg_view_duration": stats.get("avg_view_duration_seconds", 0) if isinstance(stats, dict) else 0,
+        "avg_view_percentage": stats.get("avg_view_percentage", 0) if isinstance(stats, dict) else 0,
+        "subscribers_gained": stats.get("subscribers_gained", 0) if isinstance(stats, dict) else 0,
+        "updated_title": suggestions.get("updated_title", "") if isinstance(suggestions, dict) else "",
+        "updated_tags": suggestions.get("updated_tags", []) if isinstance(suggestions, dict) else [],
+        "thumbnail_text": suggestions.get("thumbnail_text", "") if isinstance(suggestions, dict) else "",
+        "performance_level": suggestions.get("performance_level", "") if isinstance(suggestions, dict) else "",
+        "update_priority": suggestions.get("update_priority", "") if isinstance(suggestions, dict) else "",
+        "run_timestamp": datetime.datetime.now().isoformat()
     }
 
     db_file = "performance_history.json"
@@ -142,16 +150,6 @@ def store_video_performance(video_id, title,
 
     with open(db_file, "w", encoding="utf-8") as f:
         json.dump(history, f, indent=2, ensure_ascii=False)
-
-    if memory:
-        try:
-            memory.add(
-                f"Video {title} had {record['views']} views "
-                f"and {record['watch_time']} minutes watch time.",
-                user_id="reachiq_channel"
-            )
-        except Exception as e:
-            print(f"Mem0 store note: {e}")
 
     print(f"Performance stored for: {title[:40]}")
     return record
@@ -242,49 +240,83 @@ def remember_keyword_performance(keyword, video_id,
 
 
 def get_smart_suggestions(context):
-    if not memory:
+    db_file = "performance_history.json"
+    if not os.path.exists(db_file):
         return None
-    try:
-        memories = memory.search(
-            context,
-            user_id="reachiq_channel",
-            limit=5
-        )
-        if memories and memories.get("results"):
-            memory_text = "\n".join([
-                m.get("memory", "")
-                for m in memories["results"]
-            ])
-            prompt = f"""
-Based on this channel history give smart suggestions.
+
+    with open(db_file, "r", encoding="utf-8") as f:
+        try:
+            history = json.load(f)
+        except:
+            return None
+
+    if not history:
+        return None
+
+    # Build rich history text with all metadata
+    history_text = ""
+    for h in history:
+        history_text += f"""
+Video: {h.get('title', '')}
+Views: {h.get('views', 0)} | Likes: {h.get('likes', 0)} | Comments: {h.get('comments', 0)}
+Watch Time: {h.get('watch_time', 0)} mins | Avg Duration: {h.get('avg_view_duration', 0)}s
+Performance: {h.get('performance_level', 'unknown')}
+Suggested Title: {h.get('updated_title', 'N/A')}
+Tags Used: {', '.join(h.get('updated_tags', [])[:5])}
+Thumbnail Text: {h.get('thumbnail_text', 'N/A')}
+Update Priority: {h.get('update_priority', 'N/A')}
+---"""
+
+    # Use timestamp to force fresh analysis angle each run
+    run_angle = datetime.datetime.now().strftime("%H%M%S")
+    angles = ["title psychology", "thumbnail strategy",
+              "tag optimization", "hook writing", "audience retention"]
+    focus_angle = angles[int(run_angle) % len(angles)]
+
+    prompt = f"""
+You are ReachIQ AI — elite YouTube growth strategist with deep channel intelligence.
+
+Analyze this channel's FULL performance history and give razor-sharp, specific, 
+actionable suggestions. Focus this run on: {focus_angle}
+
+Be brutally honest. Every suggestion must be specific to THIS channel's data.
+Never repeat generic advice. Each run must produce DIFFERENT actionable insights.
+
 Return ONLY valid JSON, no extra text, no markdown.
 
 FORMAT:
 {{
   "smart_suggestions": [],
+  "title_patterns_that_work": [],
+  "title_patterns_to_avoid": [],
+  "best_thumbnail_approach": "",
+  "best_tags_strategy": "",
+  "hook_recommendation": "",
   "avoid_these": [],
   "double_down_on": [],
-  "predicted_best_topic": ""
+  "predicted_best_topic": "",
+  "this_run_focus": "{focus_angle}",
+  "channel_weakness": "",
+  "channel_strength": ""
 }}
 
-CHANNEL MEMORY:
-{memory_text}
+CHANNEL PERFORMANCE HISTORY:
+{history_text}
 
 CURRENT CONTEXT: {context}
+ANALYSIS TIMESTAMP: {datetime.datetime.now().isoformat()}
 """
-            result = ask_brain(prompt)
-            if result:
-                try:
-                    clean = result.strip()
-                    if "```" in clean:
-                        clean = clean.split("```")[1]
-                        if clean.startswith("json"):
-                            clean = clean[4:]
-                    return json.loads(clean)
-                except:
-                    return result
-    except Exception as e:
-        print(f"Memory search note: {e}")
+    result = ask_brain(prompt)
+    if result:
+        try:
+            clean = result.strip()
+            if "```" in clean:
+                clean = clean.split("```")[1]
+                if clean.startswith("json"):
+                    clean = clean[4:]
+            return json.loads(clean)
+        except:
+            return result
     return None
 
 
