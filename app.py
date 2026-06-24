@@ -142,9 +142,9 @@ with st.sidebar:
     st.markdown("---")
 
     # 🚀 REPLACED ST.SELECTBOX WITH THE ULTIMATE VISIBILITY LINK ENGINE
-    st.session_state["main_nav"] = "Overview"
-    if "main_nav" not in st.session_state:
-        st.session_state["main_nav"] = "Overview"
+    #st.session_state["main_nav"] = "Overview"
+    #if "main_nav" not in st.session_state:
+        #st.session_state["main_nav"] = "Overview"
     page = option_menu(
         menu_title="Navigate", 
         options=[
@@ -163,7 +163,7 @@ with st.sidebar:
         menu_icon="compass", 
         
         default_index=0,
-        key="main_nav",
+        key="None",
         
         styles={
             "container": {"background-color": "#020617", "padding": "0px !important"},
