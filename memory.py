@@ -169,14 +169,25 @@ def get_channel_patterns():
     if not history:
         return None
 
-    history_text = "\n".join([
-        f"- {h['title']}: {h['views']} views, "
-        f"{h['watch_time']} min watch time"
-        for h in history
-    ])
+    history_text = ""
+    for h in history:
+        history_text += f"""
+Video: {h.get('title', '')}
+Views: {h.get('views', 0)} | Likes: {h.get('likes', 0)} | Comments: {h.get('comments', 0)}
+Watch Time: {h.get('watch_time', 0)} mins | Avg Duration: {h.get('avg_view_duration', 0)}s
+Performance Level: {h.get('performance_level', 'unknown')}
+Tags: {', '.join(h.get('updated_tags', [])[:5])}
+Thumbnail Text: {h.get('thumbnail_text', 'N/A')}
+Update Priority: {h.get('update_priority', 'N/A')}
+Date: {h.get('date', 'N/A')}
+---"""
 
     prompt = f"""
-You are ReachIQ AI analyzing channel performance history.
+You are ReachIQ AI — elite YouTube channel intelligence analyst.
+
+Deeply analyze this channel's FULL performance history across all metadata dimensions.
+Give specific, data-driven insights not generic advice.
+
 Return ONLY valid JSON, no extra text, no markdown.
 
 FORMAT:
@@ -184,14 +195,21 @@ FORMAT:
   "best_performing_topics": [],
   "worst_performing_topics": [],
   "optimal_title_patterns": [],
+  "title_patterns_to_avoid": [],
+  "thumbnail_patterns_that_work": [],
+  "best_tags_discovered": [],
   "best_upload_insights": [],
   "recommended_next_topics": [],
   "channel_growth_trend": "",
-  "key_learning": ""
+  "biggest_weakness": "",
+  "biggest_strength": "",
+  "key_learning": "",
+  "immediate_action": ""
 }}
 
-PERFORMANCE HISTORY:
+FULL CHANNEL HISTORY:
 {history_text}
+ANALYSIS DATE: {datetime.datetime.now().isoformat()}
 """
     result = ask_brain(prompt)
     if result:
