@@ -531,36 +531,55 @@ elif "Pre-Upload" in page:
 
             if analysis and isinstance(analysis, dict):
                 st.markdown("---")
-                st.markdown(
-                    "### 🎯 AnalyzerAgent Recommendations"
-                )
+                st.markdown("### 🎯 AnalyzerAgent Recommendations")
                 ready = analysis.get("upload_ready", False)
                 if ready:
                     st.markdown(
-                        "<div class='ok'>✅ Ready to Upload"
-                        "</div>", unsafe_allow_html=True
+                        "<div class='ok'>✅ Ready to Upload</div>",
+                        unsafe_allow_html=True
                     )
                 else:
                     st.markdown(
-                        "<div class='warn'>"
-                        "⚠️ Needs Improvement Before Upload"
-                        "</div>", unsafe_allow_html=True
+                        "<div class='warn'>⚠️ Needs Improvement Before Upload</div>",
+                        unsafe_allow_html=True
                     )
+
+                # Title Analysis
+                title_analysis = analysis.get("title_analysis", {})
+                if title_analysis:
+                    st.markdown("**📌 Title Analysis:**")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.metric("Title Score", f"{title_analysis.get('score',0)}/10")
+                        st.markdown("**Best Title:**")
+                        st.success(title_analysis.get("best_title","N/A"))
+                    with c2:
+                        st.markdown("**Weaknesses:**")
+                        for w in title_analysis.get("weaknesses",[]):
+                            st.markdown(f"<div class='warn'>⚠️ {w}</div>", unsafe_allow_html=True)
+                        vs_niche = title_analysis.get("vs_niche","")
+                        if vs_niche:
+                            st.markdown(f"**vs Niche:** {vs_niche}")
+
+                st.markdown("---")
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.markdown("**Hook Suggestion:**")
-                    st.info(
-                        analysis.get("hook_suggestion","N/A")
-                    )
-                    st.markdown("**Thumbnail Text:**")
-                    st.success(
-                        analysis.get("thumbnail_text","N/A")
-                    )
+                    st.markdown("**🎣 Hook Suggestion:**")
+                    st.info(analysis.get("hook_suggestion","N/A"))
+                    st.markdown("**🖼️ Thumbnail Text:**")
+                    st.success(analysis.get("thumbnail_text","N/A"))
+                    niche_gap = analysis.get("niche_gap_opportunity","")
+                    if niche_gap:
+                        st.markdown("**🎯 Niche Gap Opportunity:**")
+                        st.markdown(f"<div class='ok'>💡 {niche_gap}</div>", unsafe_allow_html=True)
                 with c2:
-                    st.markdown("**Top 3 Actions:**")
-                    for a in analysis.get(
-                            "top_3_actions",[])[:3]:
-                        st.markdown(f"› {a}")
+                    st.markdown("**⚡ Top 3 Actions:**")
+                    for a in analysis.get("top_3_actions",[])[:3]:
+                        st.markdown(f"<div class='warn'>› {a}</div>", unsafe_allow_html=True)
+                    channel_insight = analysis.get("channel_pattern_insight","")
+                    if channel_insight:
+                        st.markdown("**🧠 Channel Pattern Insight:**")
+                        st.info(channel_insight)
 
             if run_optimizer:
                 st.markdown("---")
