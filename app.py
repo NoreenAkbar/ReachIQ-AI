@@ -186,6 +186,7 @@ with st.sidebar:
             },
         }
     )
+    st.write("PAGE VALUE:", repr(page))
 
     st.markdown("---")
     st.markdown(
