@@ -4,6 +4,8 @@ import datetime
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 
+from social_media import generate_platform_posts
+
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 app = FastAPI(title="ReachIQ AI API", version="1.0")
@@ -180,3 +182,27 @@ def weekly_keyword_task():
         print("Weekly keyword tracking complete.")
     except Exception as e:
         print(f"Keyword tracking error: {e}")
+        @app.post("/generate-post-drafts")
+        async def generate_post_drafts(payload: dict):
+            from social_media import generate_platform_posts
+            from keyword_tracker import extract_keywords
+    
+            video_title = payload.get("videoTitle", "")
+            video_url = payload.get("videoUrl", "")
+            keywords = payload.get("keywords", [])
+    
+            if not keywords and video_title:
+                extracted = extract_keywords(video_title)
+                if extracted and isinstance(extracted, dict):
+                    keywords = extracted.get("primary_keywords", [])
+    
+            posts = generate_platform_posts(
+                video_title=video_title,
+                video_url=video_url,
+                keywords=keywords
+    )
+    
+            return {
+        "status": "complete",
+        "posts": posts
+    }
