@@ -439,6 +439,72 @@ ANALYSIS DATE: {datetime.datetime.now().isoformat()}
         except:
             return result
     return None
+def validate_prediction_vs_reality(video_id):
+    """
+    Compares what ReachIQ AI predicted vs what actually happened.
+    Improves future prediction accuracy.
+    """
+    db_file = "performance_history.json"
+    if not os.path.exists(db_file):
+        return None
+
+    with open(db_file, "r", encoding="utf-8") as f:
+        try:
+            history = json.load(f)
+        except:
+            return None
+
+    video = next((h for h in history 
+                  if h.get("video_id") == video_id), None)
+    if not video:
+        return None
+
+    if not video.get("outcome_recorded"):
+        return {"status": "no_outcome", 
+                "message": "Record outcome first using record_outcome()"}
+
+    prompt = f"""
+You are ReachIQ AI validating prediction accuracy.
+
+Compare what was predicted vs what actually happened.
+Be specific about accuracy and what to improve.
+
+Return ONLY valid JSON, no extra text, no markdown.
+
+FORMAT:
+{{
+  "prediction_accuracy": "",
+  "what_was_predicted": "",
+  "what_actually_happened": "",
+  "accuracy_score": 0,
+  "gaps_identified": [],
+  "model_improvements": [],
+  "confidence_next_prediction": ""
+}}
+
+VIDEO: {video.get('title','')}
+PREDICTED VIEWS: {video.get('views',0)}
+ACTUAL VIEWS: {video.get('actual_views_after',0)}
+PREDICTED CTR: N/A
+ACTUAL CTR: {video.get('actual_ctr',0)}%
+ACTUAL RETENTION: {video.get('actual_retention',0)}%
+OUTCOME: {video.get('outcome_verdict','unknown')}
+IMPROVEMENT: {video.get('improvement',0)} views
+SUGGESTED TITLE USED: {video.get('updated_title','N/A')}
+TAGS USED: {', '.join(video.get('updated_tags',[])[:5])}
+"""
+    result = ask_brain(prompt)
+    if result:
+        try:
+            clean = result.strip()
+            if "```" in clean:
+                clean = clean.split("```")[1]
+                if clean.startswith("json"):
+                    clean = clean[4:]
+            return json.loads(clean)
+        except:
+            return result
+    return None
 def view_memory_stats():
     print("=" * 55)
     print("ReachIQ AI — Memory Statistics")
