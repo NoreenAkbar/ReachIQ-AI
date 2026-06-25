@@ -132,3 +132,51 @@ def get_suggestions(context: str = "general"):
     from memory import get_smart_suggestions
     suggestions = get_smart_suggestions(context)
     return {"suggestions": suggestions}
+@app.post("/track-keywords")
+async def track_keywords(payload: dict):
+    from keyword_tracker import extract_keywords, find_competing_videos
+    video_title = payload.get("videoTitle", "")
+    keywords = payload.get("keywords", [])
+    
+    results = {}
+    for kw in keywords[:5]:
+        competitors = find_competing_videos(kw, max_results=5)
+        results[kw] = competitors
+    
+    extracted = extract_keywords(video_title)
+    return {
+        "status": "complete",
+        "extracted_keywords": extracted,
+        "competitor_analysis": results
+    }
+
+@app.post("/track-keywords-weekly")
+async def track_keywords_weekly(background_tasks: BackgroundTasks):
+    background_tasks.add_task(weekly_keyword_task)
+    return {"status": "started", "message": "Weekly keyword tracking running"}
+
+def weekly_keyword_task():
+    try:
+        from youtube_api import get_videos
+        from keyword_tracker import extract_keywords, find_competing_videos
+        import json, os
+        
+        videos = get_videos(10)
+        all_keywords = {}
+        
+        for video in videos:
+            keywords = extract_keywords(video["title"])
+            if keywords and isinstance(keywords, dict):
+                primary = keywords.get("primary_keywords", [])
+                all_keywords[video["title"]] = primary
+        
+        os.makedirs("reports", exist_ok=True)
+        with open("reports/weekly_keywords.json", "w") as f:
+            json.dump({
+                "date": datetime.datetime.now().isoformat(),
+                "keywords": all_keywords
+            }, f, indent=2)
+            
+        print("Weekly keyword tracking complete.")
+    except Exception as e:
+        print(f"Keyword tracking error: {e}")
