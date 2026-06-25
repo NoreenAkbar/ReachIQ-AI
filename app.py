@@ -1485,6 +1485,36 @@ elif "Memory" in page:
 
     mods = load_modules()
     if mods["loaded"]:
+        st.markdown("### 🔄 Feedback Reinforcement")
+        feedback = None
+        try:
+            from memory import get_feedback_reinforcement
+            feedback = get_feedback_reinforcement()
+        except Exception as e:
+            pass
+
+        if feedback and isinstance(feedback, dict):
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("**✅ What Worked:**")
+                for w in feedback.get("what_worked",[])[:3]:
+                    st.markdown(f"<div class='ok'>✅ {w}</div>", unsafe_allow_html=True)
+                st.markdown("**📌 Proven Title Patterns:**")
+                for t in feedback.get("title_patterns_proven",[])[:2]:
+                    st.markdown(f"<div class='pass-box'>› {t}</div>", unsafe_allow_html=True)
+            with c2:
+                st.markdown("**❌ What Failed:**")
+                for w in feedback.get("what_failed",[])[:3]:
+                    st.markdown(f"<div class='fail'>❌ {w}</div>", unsafe_allow_html=True)
+                st.markdown("**🏷️ Proven Tag Strategies:**")
+                for t in feedback.get("tag_strategies_proven",[])[:2]:
+                    st.markdown(f"<div class='pass-box'>› {t}</div>", unsafe_allow_html=True)
+            if feedback.get("key_reinforcement"):
+                st.markdown(f"<div class='ok'>🧠 Key Learning: {feedback['key_reinforcement']}</div>", unsafe_allow_html=True)
+        else:
+            st.info("Run post-upload analysis and record outcomes to build feedback intelligence.")
+
+        st.markdown("---")
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("### 📈 Learned Channel Patterns")
