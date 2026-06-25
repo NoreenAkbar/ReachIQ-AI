@@ -1170,21 +1170,24 @@ elif "Post-Upload" in page:
                 if stats and isinstance(stats, dict):
                     c1,c2,c3,c4 = st.columns(4)
                     with c1:
-                        st.metric("Views",
-                                  stats.get("views",0))
+                        st.metric("Views", stats.get("views",0))
                     with c2:
-                        st.metric("Likes",
-                                  stats.get("likes",0))
+                        st.metric("Likes", stats.get("likes",0))
                     with c3:
-                        st.metric("Comments",
-                                  stats.get("comments",0))
+                        st.metric("Comments", stats.get("comments",0))
                     with c4:
                         v = stats.get("views",0)
                         l = stats.get("likes",0)
-                        r = (
-                            f"{l/v*100:.1f}%" if v > 0
-                            else "0%"
-                        )
+                        r = f"{l/v*100:.1f}%" if v > 0 else "0%"
+                        st.metric("Like Ratio", r)
+
+                    c5,c6,c7 = st.columns(3)
+                    with c5:
+                        st.metric("CTR", f"{stats.get('ctr_percent',0)}%")
+                    with c6:
+                        st.metric("Impressions", stats.get("impressions",0))
+                    with c7:
+                        st.metric("Audience Retention", f"{stats.get('audience_retention',0)}%")
                         st.metric("Like Ratio", r)
                 else:
                     st.info(

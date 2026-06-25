@@ -59,7 +59,7 @@ def get_video_analytics(youtube_analytics, video_id, days=7):
             ids="channel==MINE",
             startDate=start_date,
             endDate=end_date,
-            metrics="views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,likes,comments",
+            metrics="views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,likes,comments,impressions,clickThroughRate",
             dimensions="video",
             filters=f"video=={video_id}"
         ).execute()
@@ -69,13 +69,15 @@ def get_video_analytics(youtube_analytics, video_id, days=7):
             return {
                 "video_id": video_id,
                 "period_days": days,
-                "views": row[1],
-                "watch_time_minutes": row[2],
-                "avg_view_duration_seconds": row[3],
-                "avg_view_percentage": row[4],
-                "subscribers_gained": row[5],
-                "likes": row[6],
-                "comments": row[7]
+                "views": int(row[0]) if row[0] else 0,
+                "watch_time_minutes": float(row[1]) if row[1] else 0,
+                "avg_view_duration_seconds": float(row[2]) if row[2] else 0,
+                "avg_view_percentage": float(row[3]) if row[3] else 0,
+                "subscribers_gained": int(row[4]) if row[4] else 0,
+                "likes": int(row[5]) if row[5] else 0,
+                "comments": int(row[6]) if row[6] else 0,
+                "impressions": int(row[7]) if row[7] else 0,
+                "ctr_percent": round(float(row[8]) * 100, 2) if row[8] else 0
             }
         return None
 
