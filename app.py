@@ -1515,8 +1515,46 @@ elif "Memory" in page:
             st.info("Run post-upload analysis and record outcomes to build feedback intelligence.")
 
         st.markdown("---")
-        c1, c2 = st.columns(2)
-        with c1:
+        
+        st.markdown("### 🎯 Prediction vs Reality Validator")
+        with st.spinner("Loading videos..."):
+            try:
+                videos = mods["get_videos"](5)
+            except:
+                videos = []
+
+        if videos:
+            vid_options = {v["title"][:60]: v for v in videos}
+            selected_vid = st.selectbox(
+                "Select video to validate",
+                list(vid_options.keys()),
+                key="pred_val_select"
+            )
+            if st.button("🔍 Validate Prediction", key="pred_val_btn"):
+                video = vid_options[selected_vid]
+                from memory import validate_prediction_vs_reality
+                result = validate_prediction_vs_reality(video["video_id"])
+                if result and isinstance(result, dict):
+                    if result.get("status") == "no_outcome":
+                        st.info("Record outcome first in Post-Upload Monitor.")
+                    else:
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            st.metric("Accuracy Score",
+                                     f"{result.get('accuracy_score',0)}/10")
+                            st.markdown("**What Was Predicted:**")
+                            st.info(result.get("what_was_predicted",""))
+                        with c2:
+                            st.markdown("**What Actually Happened:**")
+                            st.info(result.get("what_actually_happened",""))
+                            st.markdown("**Confidence Next Prediction:**")
+                            st.success(result.get("confidence_next_prediction",""))
+                        st.markdown("**Gaps Identified:**")
+                        for g in result.get("gaps_identified",[]):
+                            st.markdown(f"<div class='warn'>› {g}</div>",
+                                       unsafe_allow_html=True)
+                else:
+                    st.info("No prediction data found for this video.")
             st.markdown("### 📈 Learned Channel Patterns")
             with st.spinner("Loading memory..."):
                 patterns = mods["get_channel_patterns"]()
