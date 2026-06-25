@@ -337,7 +337,108 @@ ANALYSIS TIMESTAMP: {datetime.datetime.now().isoformat()}
             return result
     return None
 
+def record_outcome(video_id, actual_views_after, 
+                   actual_ctr, actual_retention):
+    """
+    Records actual performance after suggestions were applied.
+    Compares prediction vs reality to improve future suggestions.
+    """
+    db_file = "performance_history.json"
+    if not os.path.exists(db_file):
+        return None
 
+    with open(db_file, "r", encoding="utf-8") as f:
+        try:
+            history = json.load(f)
+        except:
+            return None
+
+    for i, item in enumerate(history):
+        if item.get("video_id") == video_id:
+            history[i]["actual_views_after"] = actual_views_after
+            history[i]["actual_ctr"] = actual_ctr
+            history[i]["actual_retention"] = actual_retention
+            history[i]["outcome_recorded"] = datetime.date.today().isoformat()
+            predicted = item.get("views", 0)
+            improvement = actual_views_after - predicted
+            history[i]["improvement"] = improvement
+            history[i]["outcome_verdict"] = (
+                "improved" if improvement > 0 else "declined"
+            )
+            break
+
+    with open(db_file, "w", encoding="utf-8") as f:
+        json.dump(history, f, indent=2, ensure_ascii=False)
+
+    print(f"Outcome recorded for video: {video_id}")
+    return history
+
+
+def get_feedback_reinforcement():
+    """
+    Analyzes which suggestions actually improved performance.
+    Feeds learnings back into future suggestions.
+    """
+    db_file = "performance_history.json"
+    if not os.path.exists(db_file):
+        return None
+
+    with open(db_file, "r", encoding="utf-8") as f:
+        try:
+            history = json.load(f)
+        except:
+            return None
+
+    outcomes = [h for h in history if h.get("outcome_recorded")]
+    if not outcomes:
+        return None
+
+    outcomes_text = ""
+    for h in outcomes:
+        outcomes_text += f"""
+Video: {h.get('title','')}
+Suggested Title: {h.get('updated_title','N/A')}
+Tags Used: {', '.join(h.get('updated_tags',[])[:5])}
+Views Before: {h.get('views',0)} → After: {h.get('actual_views_after',0)}
+CTR: {h.get('actual_ctr',0)}% | Retention: {h.get('actual_retention',0)}%
+Outcome: {h.get('outcome_verdict','unknown')} | Improvement: {h.get('improvement',0)}
+---"""
+
+    prompt = f"""
+You are ReachIQ AI learning from past suggestion outcomes.
+
+Analyze which suggestions worked and which didn't.
+Extract specific learnings to improve future recommendations.
+
+Return ONLY valid JSON, no extra text, no markdown.
+
+FORMAT:
+{{
+  "what_worked": [],
+  "what_failed": [],
+  "title_patterns_proven": [],
+  "tag_strategies_proven": [],
+  "thumbnail_insights": [],
+  "key_reinforcement": "",
+  "next_suggestion_focus": ""
+}}
+
+OUTCOMES DATA:
+{outcomes_text}
+ANALYSIS DATE: {datetime.datetime.now().isoformat()}
+"""
+    result = ask_brain(prompt)
+    if result:
+        try:
+            clean = result.strip()
+            if "```" in clean:
+                clean = clean.split("```")[1]
+                if clean.startswith("json"):
+                    clean = clean[4:]
+            return json.loads(clean)
+        except:
+            return result
+    return None
 def view_memory_stats():
     print("=" * 55)
     print("ReachIQ AI — Memory Statistics")
