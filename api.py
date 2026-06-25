@@ -206,3 +206,62 @@ def weekly_keyword_task():
         "status": "complete",
         "posts": posts
     }
+@app.post("/find-distribution")
+async def find_distribution(payload: dict):
+    from social_media import find_reddit_opportunities, find_quora_opportunities
+    from keyword_tracker import find_distribution_opportunities
+    
+    video_title = payload.get("videoTitle", "")
+    video_url = payload.get("videoUrl", "")
+    keywords = payload.get("keywords", [])
+    
+    reddit = find_reddit_opportunities(keywords[:3])
+    quora = find_quora_opportunities(keywords[:3])
+    yt_opps = find_distribution_opportunities(keywords[:3])
+    
+    return {
+        "status": "complete",
+        "reddit": reddit,
+        "quora": quora,
+        "youtube_opportunities": yt_opps,
+        "video_title": video_title,
+        "video_url": video_url
+    }
+
+@app.post("/find-distribution-weekly")
+async def find_distribution_weekly(background_tasks: BackgroundTasks):
+    background_tasks.add_task(weekly_distribution_task)
+    return {"status": "started", 
+            "message": "Weekly distribution finder running"}
+
+def weekly_distribution_task():
+    try:
+        from youtube_api import get_videos
+        from keyword_tracker import extract_keywords, find_distribution_opportunities
+        from social_media import find_reddit_opportunities
+        import json, os
+        
+        videos = get_videos(5)
+        all_opportunities = {}
+        
+        for video in videos:
+            keywords = extract_keywords(video["title"])
+            if keywords and isinstance(keywords, dict):
+                primary = keywords.get("primary_keywords", [])
+                reddit = find_reddit_opportunities(primary[:3])
+                yt_opps = find_distribution_opportunities(primary[:3])
+                all_opportunities[video["title"]] = {
+                    "reddit": reddit,
+                    "youtube": yt_opps
+                }
+        
+        os.makedirs("reports", exist_ok=True)
+        with open("reports/weekly_distribution.json", "w") as f:
+            json.dump({
+                "date": datetime.datetime.now().isoformat(),
+                "opportunities": all_opportunities
+            }, f, indent=2)
+            
+        print("Weekly distribution finder complete.")
+    except Exception as e:
+        print(f"Distribution finder error: {e}")        
