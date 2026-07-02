@@ -264,4 +264,30 @@ def weekly_distribution_task():
             
         print("Weekly distribution finder complete.")
     except Exception as e:
-        print(f"Distribution finder error: {e}")        
+        print(f"Distribution finder error: {e}")  
+@app.post("/pre-upload")
+async def pre_upload_analysis(payload: dict):
+    from analyzer import analyze_pre_upload
+    from scorer import score_video
+    from keyword_tracker import extract_keywords, find_competing_videos
+    
+    title = payload.get("title", "")
+    description = payload.get("description", "")
+    tags = payload.get("tags", "")
+    script = payload.get("script", "")
+    groq_key = payload.get("groq_key", "")
+    
+    # Override Groq key with user's key
+    if groq_key:
+        os.environ["GROQ_API_KEY"] = groq_key
+    
+    score = score_video(title, description, tags)
+    analysis = analyze_pre_upload(title, description, tags, script or None)
+    keywords = extract_keywords(title, description)
+    
+    return {
+        "status": "complete",
+        "score": score,
+        "analysis": analysis,
+        "keywords": keywords
+    }      
