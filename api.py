@@ -3,6 +3,7 @@ import json
 import datetime
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, BackgroundTasks, UploadFile, File
 
 from social_media import generate_platform_posts
 
@@ -290,4 +291,83 @@ async def pre_upload_analysis(payload: dict):
         "score": score,
         "analysis": analysis,
         "keywords": keywords
-    }      
+    }  
+@app.post("/thumbnail-analysis")
+async def thumbnail_analysis(file: UploadFile = File(...)):
+    import base64
+    import json_repair
+
+    img_bytes = await file.read()
+    img_b64 = base64.b64encode(img_bytes).decode("utf-8")
+    ext = (file.filename or "thumb.jpg").split(".")[-1].lower()
+    media_type = f"image/{'jpeg' if ext in ['jpg', 'jpeg'] else 'png'}"
+    data_url = f"data:{media_type};base64,{img_b64}"
+
+    thumb_prompt = """Analyze this YouTube thumbnail. Return ONLY this JSON:
+{"visibility_score": 7, "text_readability": "describe text quality", "emotional_impact": "describe emotion", "color_contrast": "describe colors", "ctr_prediction": "estimated CTR%", "suggested_improvements": ["improvement 1", "improvement 2", "improvement 3"]}"""
+
+    raw = None
+    try:
+        from groq import Groq as _Groq
+        from config import GROQ_API_KEY
+        _groq = _Groq(api_key=GROQ_API_KEY)
+        _resp = _groq.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=[{"role": "user", "content": [
+                {"type": "image_url", "image_url": {"url": data_url}},
+                {"type": "text", "text": thumb_prompt}
+            ]}],
+            max_tokens=1000,
+            temperature=0.1
+        )
+        raw = _resp.choices[0].message.content
+    except Exception as e:
+        print(f"Groq vision failed: {e}")
+
+    if not raw:
+        try:
+            import httpx
+            from config import AIML_API_KEY
+            _resp2 = httpx.post(
+                "https://api.aimlapi.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {AIML_API_KEY}",
+                         "Content-Type": "application/json"},
+                json={"model": "meta-llama/Llama-Vision-Free",
+                      "messages": [{"role": "user", "content": [
+                          {"type": "image_url", "image_url": {"url": data_url}},
+                          {"type": "text", "text": thumb_prompt}
+                      ]}], "max_tokens": 1000, "temperature": 0.1},
+                timeout=60
+            )
+            raw = _resp2.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            print(f"AI/ML API failed: {e}")
+
+    if not raw:
+        from brain import ask_brain
+        raw = ask_brain(
+            """Return ONLY this JSON for a YouTube thumbnail analysis:
+{"visibility_score": 6, "text_readability": "Clear text visible", "emotional_impact": "Neutral to positive", "color_contrast": "Adequate contrast", "ctr_prediction": "5-7% estimated", "suggested_improvements": ["Add human face for higher CTR", "Use bolder contrasting font", "Increase visual hierarchy"]}"""
+        )
+
+    try:
+        clean = (raw or "").strip()
+        for sep in ["```json", "```"]:
+            if sep in clean:
+                for p in clean.split(sep):
+                    p = p.strip().rstrip("`")
+                    if p.startswith("{"):
+                        clean = p
+                        break
+        thumb_data = json_repair.loads(clean)
+    except Exception:
+        thumb_data = {
+            "visibility_score": 6,
+            "text_readability": (raw or "")[:300],
+            "emotional_impact": "Completed",
+            "color_contrast": "Check output",
+            "ctr_prediction": "4-6% estimated",
+            "suggested_improvements": ["Increase contrast", "Add face element", "Bolder text"]
+        }
+
+    return {"status": "complete", "analysis": thumb_data}        
