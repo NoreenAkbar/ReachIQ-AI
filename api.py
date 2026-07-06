@@ -268,32 +268,31 @@ def weekly_distribution_task():
         print(f"Distribution finder error: {e}")  
 @app.post("/pre-upload")
 async def pre_upload_analysis(payload: dict):
-    from analyzer import analyze_pre_upload
-    from scorer import score_video
-    from keyword_tracker import extract_keywords, find_competing_videos
-    
+    from decision_engine import run_pre_upload_decision
+
     title = payload.get("title", "")
     description = payload.get("description", "")
     tags = payload.get("tags", "")
     script = payload.get("script", "")
     groq_key = payload.get("groq_key", "")
-    
-    # Override Groq key with user's key
+    niche_context = payload.get("niche_context", None)
+
     if groq_key:
         os.environ["GROQ_API_KEY"] = groq_key
-    
-    score = score_video(title, description, tags)
-    analysis = analyze_pre_upload(title, description, tags, script or None)
-    keywords = extract_keywords(title, description)
-    
+
+    result = run_pre_upload_decision(
+        title, description, tags,
+        script=script or None,
+        niche_context=niche_context
+    )
+
     return {
         "status": "complete",
-        "score": score,
-        "analysis": analysis,
-        "keywords": keywords
-    }  
+        "strategic_report": result["strategic_report"],
+        "modules": result["modules"]
+    }
 @app.post("/thumbnail-analysis")
-async def thumbnail_analysis(file: UploadFile = File(...)):
+async def thumbnail_analysis(file: UploadFile = File(...), title: str = "", description: str = ""):
     import base64
     import json_repair
 
@@ -303,8 +302,15 @@ async def thumbnail_analysis(file: UploadFile = File(...)):
     media_type = f"image/{'jpeg' if ext in ['jpg', 'jpeg'] else 'png'}"
     data_url = f"data:{media_type};base64,{img_b64}"
 
-    thumb_prompt = """Analyze this YouTube thumbnail. Return ONLY this JSON:
-{"visibility_score": 7, "text_readability": "describe text quality", "emotional_impact": "describe emotion", "color_contrast": "describe colors", "ctr_prediction": "estimated CTR%", "suggested_improvements": ["improvement 1", "improvement 2", "improvement 3"]}"""
+    thumb_prompt = f"""Analyze this YouTube thumbnail STRICTLY against the video's title and description. Be harsh — do not rationalize unrelated branding/logos as "supporting" the topic.
+
+VIDEO TITLE: {title}
+VIDEO DESCRIPTION: {description}
+
+If the thumbnail shows a generic logo, brand mark, or content unrelated to the specific topic in the title, you MUST flag it as a mismatch — do not praise it as "reinforcing brand" instead.
+
+Return ONLY this JSON:
+{{"visibility_score": 7, "text_readability": "describe text quality", "emotional_impact": "describe emotion", "color_contrast": "describe colors", "ctr_prediction": "estimated CTR%", "title_thumbnail_match": "state clearly yes/no and why", "mismatch_warning": "if thumbnail does not depict the video's actual topic/subject, state this explicitly here, otherwise empty string", "suggested_improvements": ["improvement 1", "improvement 2", "improvement 3"]}}"""
 
     raw = None
     try:
@@ -367,7 +373,16 @@ async def thumbnail_analysis(file: UploadFile = File(...)):
             "emotional_impact": "Completed",
             "color_contrast": "Check output",
             "ctr_prediction": "4-6% estimated",
+            "title_thumbnail_match": "Not analyzed",
+            "mismatch_warning": "",
             "suggested_improvements": ["Increase contrast", "Add face element", "Bolder text"]
         }
+        from memory import store_video_performance
+        store_video_performance(
+            video_id=f"thumb_{title[:30]}",
+            title=title,
+            stats={},
+            suggestions={"thumbnail_analysis": thumb_data}
+        )
 
     return {"status": "complete", "analysis": thumb_data}        

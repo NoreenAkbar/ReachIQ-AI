@@ -15,15 +15,14 @@ MAX_PASSES = 3
 IMPROVEMENT_THRESHOLD = 7.5
 
 
-def self_review(content, content_type="youtube_title"):
-    """
-    AI critiques its own output.
-    Returns score and specific weaknesses.
-    """
+def self_review(content, content_type="youtube_title", original_topic=None):
+    topic_line = f"\nORIGINAL TOPIC (must stay on this subject): {original_topic}" if original_topic else ""
     prompt = f"""
 You are ReachIQ AI self-review system.
 Critically evaluate this {content_type} output.
 Be strict and honest.
+{topic_line}
+CRITICAL RULE: If the content has drifted to a different topic/domain than the original topic, set "topic_drift" to true and score to 0.
 
 Return ONLY valid JSON, no extra text, no markdown.
 
@@ -31,6 +30,7 @@ FORMAT:
 {{
   "score": 0,
   "passes_threshold": false,
+  "topic_drift": false,
   "weaknesses": [],
   "specific_improvements": []
 }}
@@ -50,22 +50,22 @@ CONTENT TO REVIEW:
                     clean = clean[4:]
             return json.loads(clean)
         except:
-            return {"score": 5.0, "passes_threshold": False,
+            return {"score": 5.0, "passes_threshold": False, "topic_drift": False,
                     "weaknesses": ["Could not parse review"],
                     "specific_improvements": ["Retry"]}
     return None
 
 
-def improve_content(original_content, weaknesses,
-                    improvements, content_type, pass_num):
-    """
-    Generates improved version based on critique.
-    """
+def improve_content(original_content, weaknesses, improvements,
+                    content_type, pass_num, original_topic=None):
+    topic_line = f"\nORIGINAL TOPIC (the improved version MUST stay strictly about this — never switch subject/domain): {original_topic}" if original_topic else ""
     prompt = f"""
 You are ReachIQ AI improvement engine on pass {pass_num} of {MAX_PASSES}.
 
 Improve this {content_type} by fixing the specific weaknesses identified.
 Make targeted improvements only — do not change what is already working.
+{topic_line}
+CRITICAL: The improved content must remain about the exact same subject as the original. Never introduce an unrelated topic or domain.
 
 Return ONLY valid JSON, no extra text, no markdown.
 
@@ -98,34 +98,30 @@ SPECIFIC IMPROVEMENTS TO MAKE:
             return None
     return None
 
-
-def recursive_optimize(initial_content, content_type="youtube_title"):
-    """
-    Main 3-pass recursive optimization loop.
-
-    Pass 1 — Review initial content, identify weaknesses
-    Pass 2 — Improve based on critique
-    Pass 3 — Final review and polish
-
-    Stops early if score >= 7.5 threshold.
-    Returns full optimization history for transparency.
-    """
+def recursive_optimize(initial_content, content_type="youtube_title", original_topic=None):
     history = []
     current_content = initial_content
     final_score = 0
+    original_topic = original_topic or initial_content
 
     print(f"Starting recursive optimization for: {content_type}")
-    print(f"Max passes: {MAX_PASSES}, Threshold: {IMPROVEMENT_THRESHOLD}")
 
     for pass_num in range(1, MAX_PASSES + 1):
         print(f"\nPass {pass_num}/{MAX_PASSES}...")
 
-        # Self review current content
-        review = self_review(current_content, content_type)
-
+        review = self_review(current_content, content_type, original_topic)
         if not review:
             print(f"Pass {pass_num}: Review failed, stopping.")
             break
+
+        if review.get("topic_drift"):
+            print(f"Pass {pass_num}: Topic drift detected, discarding this iteration.")
+            history.append({
+                "pass": pass_num, "content": current_content, "score": 0,
+                "passes_threshold": False, "weaknesses": ["Topic drift detected - discarded"],
+                "improvements_suggested": [], "rejected": True
+            })
+            continue  # retry same pass content, don't advance current_content
 
         score = review.get("score", 0)
         passes = review.get("passes_threshold", False)
@@ -134,40 +130,27 @@ def recursive_optimize(initial_content, content_type="youtube_title"):
         final_score = score
 
         history.append({
-            "pass": pass_num,
-            "content": current_content,
-            "score": score,
-            "passes_threshold": passes,
-            "weaknesses": weaknesses,
+            "pass": pass_num, "content": current_content, "score": score,
+            "passes_threshold": passes, "weaknesses": weaknesses,
             "improvements_suggested": improvements
         })
 
         print(f"Pass {pass_num} score: {score}/10")
 
-        # Stop if threshold met
         if passes or score >= IMPROVEMENT_THRESHOLD:
             print(f"Threshold met at pass {pass_num}. Stopping.")
             break
-
-        # Stop if last pass
         if pass_num == MAX_PASSES:
             print("Max passes reached. Using best version.")
             break
 
-        # Generate improvement
-        improved = improve_content(
-            current_content, weaknesses,
-            improvements, content_type, pass_num
-        )
-
+        improved = improve_content(current_content, weaknesses, improvements,
+                                   content_type, pass_num, original_topic)
         if improved and isinstance(improved, dict):
-            new_content = improved.get(
-                "improved_content", current_content
-            )
-            changes = improved.get("changes_made", [])
-            history[-1]["changes_made"] = changes
+            new_content = improved.get("improved_content", current_content)
+            history[-1]["changes_made"] = improved.get("changes_made", [])
             current_content = new_content
-            print(f"Improvements applied: {len(changes)} changes")
+            print(f"Improvements applied.")
         else:
             print("Could not generate improvements. Using current.")
             break
@@ -183,18 +166,13 @@ def recursive_optimize(initial_content, content_type="youtube_title"):
 
 
 def optimize_title(title):
-    """Optimizes a YouTube title through 3-pass loop"""
-    return recursive_optimize(title, "youtube_title")
-
+    return recursive_optimize(title, "youtube_title", original_topic=title)
 
 def optimize_description(description):
-    """Optimizes a YouTube description through 3-pass loop"""
-    return recursive_optimize(description, "youtube_description")
+    return recursive_optimize(description, "youtube_description", original_topic=description)
 
-
-def optimize_hook(hook):
-    """Optimizes a video hook through 3-pass loop"""
-    return recursive_optimize(hook, "youtube_hook")
+def optimize_hook(hook, topic=None):
+    return recursive_optimize(hook, "youtube_hook", original_topic=topic or hook)
 
 
 if __name__ == "__main__":
