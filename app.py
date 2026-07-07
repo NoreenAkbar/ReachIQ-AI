@@ -1002,7 +1002,7 @@ elif "Thumbnail" in page:
                         from config import GROQ_API_KEY
                         _groq = _Groq(api_key=GROQ_API_KEY)
                         _resp = _groq.chat.completions.create(
-                            model="meta-llama/llama-4-scout-17b-16e-instruct",
+                            model="meta-llama/llama-4-maverick-17b-128e-instruct-fp8",
                             messages=[{"role": "user", "content": [
                                 {"type": "image_url", "image_url": {"url": data_url}},
                                 {"type": "text", "text": thumb_prompt}

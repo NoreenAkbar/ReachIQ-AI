@@ -1,5 +1,7 @@
 from brain import ask_brain
 from youtube_api import get_videos
+from query import get_niche_intelligence
+from config import DEFAULT_NICHE
 import json
 
 def analyze_pre_upload(title, description, tags, script=None):
@@ -51,7 +53,27 @@ def analyze_pre_upload(title, description, tags, script=None):
                         )
     except Exception as e:
         print(f"Niche fetch note: {e}")
+    # Derive niche from existing keyword extraction, no extra LLM call
+    niche = None
+    if keywords and isinstance(keywords, dict):
+        primary = keywords.get("primary_keywords", [])
+        angles = keywords.get("trending_angles", [])
+        if primary:
+            niche = primary[0]
+        elif angles:
+            niche = angles[0]
+    if not niche:
+        niche = DEFAULT_NICHE
 
+    rag_context = None
+    try:
+        rag_context = get_niche_intelligence(niche)
+    except Exception as e:
+        print(f"Video RAG note: {e}")
+
+    rag_section = ""
+    if rag_context:
+        rag_section = f"\nNICHE INTELLIGENCE (Video RAG):\n{json.dumps(rag_context)[:800]}\n"
     prompt = f"""
 You are ReachIQ AI — elite YouTube growth strategist.
 
@@ -98,6 +120,7 @@ TAGS: {tags}
 {script_section}
 {channel_context}
 {niche_context}
+{rag_section}
 ANALYSIS RUN: {datetime.datetime.now().isoformat()}
 """
 

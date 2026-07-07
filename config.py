@@ -13,6 +13,7 @@ YOUTUBE_API_KEY = _get("YOUTUBE_API_KEY")
 GROQ_API_KEY = _get("GROQ_API_KEY")
 CHANNEL_ID = _get("CHANNEL_ID")
 AIML_API_KEY = _get("AIML_API_KEY")
+DEFAULT_NICHE = "AI Automation & Education"
 
 if __name__ == "__main__":
     print("YOUTUBE_API_KEY:", "✅ Loaded" if YOUTUBE_API_KEY else "❌ Missing")
