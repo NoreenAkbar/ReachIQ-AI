@@ -1,6 +1,7 @@
 import streamlit as st
+import reachiq_video_rag_engine.config as c
 
-st.write(st.secrets)
+st.write(c.__file__)
 st.stop()
 import streamlit as st
 import sys
