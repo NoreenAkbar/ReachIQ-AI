@@ -1,6 +1,6 @@
 from brain import ask_brain
 from youtube_api import get_videos
-from query import get_niche_intelligence
+from reachiq_video_rag_engine.query import get_niche_intelligence
 from config import DEFAULT_NICHE
 import json
 

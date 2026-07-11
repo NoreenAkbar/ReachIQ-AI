@@ -150,7 +150,8 @@ with st.sidebar:
         options=[
             "Overview", 
             "Pre-Upload Analyzer",
-            "Band Live Coordination", 
+            "Band Live Coordination",
+            "Competitive Intelligence", 
             "Thumbnail Analysis", 
             "Post-Upload Monitor", 
             "Social Distribution", 
@@ -159,7 +160,7 @@ with st.sidebar:
             "System Diagnostics"
         ],
         # Clean modern icons that replace your emojis perfectly
-        icons=["house", "search","people-fill","image", "activity", "share", "database", "shield-check", "gear"], 
+        icons=["house", "search","people-fill","trophy","image", "activity", "share", "database", "shield-check", "gear"], 
         menu_icon="compass", 
         
         default_index=0,
@@ -931,6 +932,89 @@ elif "Band Live Coordination" in page:
                                 f"r/{sub.get('name','').replace('r/','')}"
                             ):
                                 st.write(sub.get("sample_comment", ""))
+
+elif "Competitive Intelligence" in page:
+    st.header("🏆 Competitive Intelligence")
+    st.markdown(
+        "Video RAG analyzes top competitor videos in your niche "
+        "and generates a full competitive intelligence report."
+    )
+
+    niche_input = st.text_input(
+        "Enter your niche",
+        placeholder="e.g. AI Automation, Personal Finance, Fitness"
+    )
+
+    if st.button("🔍 Run Competitive Analysis"):
+        if not niche_input:
+            st.warning("Please enter a niche.")
+        else:
+            with st.spinner("Analyzing competitor videos..."):
+                try:
+                    from reachiq_video_rag_engine.competitive_engine import CompetitiveIntelligenceEngine
+                    engine = CompetitiveIntelligenceEngine()
+                    report = engine.analyze(niche_input)
+                except Exception as e:
+                    report = None
+                    st.error(f"Analysis failed: {e}")
+
+            if report and isinstance(report, dict):
+                st.markdown("---")
+
+                if report.get("executive_summary"):
+                    st.markdown("### 📋 Executive Summary")
+                    st.info(report["executive_summary"])
+
+                if report.get("confidence_score") is not None:
+                    st.metric("Confidence Score", f"{report['confidence_score']}%")
+
+                with st.expander("🎣 Hook Intelligence"):
+                    st.write(report.get("hook_intelligence", "No data"))
+
+                with st.expander("🏗️ Structure Intelligence"):
+                    st.write(report.get("structure_intelligence", "No data"))
+
+                with st.expander("📢 CTA Intelligence"):
+                    st.write(report.get("cta_intelligence", "No data"))
+
+                with st.expander("🖼️ Thumbnail Intelligence"):
+                    st.write(report.get("thumbnail_intelligence", "No data"))
+
+                with st.expander("📈 Trend Intelligence"):
+                    st.write(report.get("trend_intelligence", "No data"))
+
+                with st.expander("🧠 Viewer Psychology"):
+                    st.write(report.get("viewer_psychology", "No data"))
+
+                with st.expander("🕳️ Content Gaps"):
+                    st.write(report.get("content_gaps", "No data"))
+
+                with st.expander("⚡ Competitive Advantages"):
+                    st.write(report.get("competitive_advantages", "No data"))
+
+                with st.expander("🚀 Future Opportunities"):
+                    st.write(report.get("future_opportunities", "No data"))
+
+                with st.expander("🎯 Recommended Video Blueprint"):
+                    st.write(report.get("recommended_video_blueprint", "No data"))
+
+                strategic = report.get("strategic_reasoning")
+                if strategic:
+                    with st.expander("🧭 Strategic Reasoning"):
+                        if isinstance(strategic, dict):
+                            viral_blueprint = strategic.get("viral_video_blueprint")
+                            for k, v in strategic.items():
+                                if k != "viral_video_blueprint":
+                                    st.markdown(f"**{k.replace('_',' ').title()}:**")
+                                    st.write(v)
+                            if viral_blueprint:
+                                st.markdown("---")
+                                st.markdown("### 🔥 Viral Video Blueprint")
+                                st.success(viral_blueprint)
+                        else:
+                            st.write(strategic)
+            else:
+                st.info("No report generated. Try a different niche or ensure videos are indexed.")
          # ══════════════════════════════════════════════════════════
 # PAGE 3: THUMBNAIL ANALYSIS
 # ══════════════════════════════════════════════════════════
