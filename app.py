@@ -1,4 +1,8 @@
 import streamlit as st
+
+st.write(st.secrets)
+st.stop()
+import streamlit as st
 import sys
 import os
 import json
