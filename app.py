@@ -1,8 +1,4 @@
-import streamlit as st
 
-st.write(st.secrets)
-st.write(st.secrets["SUPABASE_URL"])
-st.stop()
 import streamlit as st
 import sys
 import os
