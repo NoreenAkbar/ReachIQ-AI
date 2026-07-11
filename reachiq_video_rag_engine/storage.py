@@ -1,5 +1,5 @@
 from supabase import create_client
-from reachiq_video_rag_engine.config import SUPABASE_URL, SUPABASE_SERVICE_KEY
+from .config import SUPABASE_URL, SUPABASE_SERVICE_KEY
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
