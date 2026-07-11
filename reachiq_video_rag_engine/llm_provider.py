@@ -1,6 +1,6 @@
 import requests
 from groq import Groq
-from reachiq_video_rag_engine.config import GROQ_API_KEY, FIREWORKS_API_KEY, LLM_PROVIDER, MODELS
+from .config import GROQ_API_KEY, FIREWORKS_API_KEY, LLM_PROVIDER, MODELS
 
 groq_client = Groq(api_key=GROQ_API_KEY)
 

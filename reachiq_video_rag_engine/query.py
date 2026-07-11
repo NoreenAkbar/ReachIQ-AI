@@ -1,6 +1,6 @@
 from sentence_transformers import SentenceTransformer
-from reachiq_video_rag_engine.storage import supabase
-from reachiq_video_rag_engine.llm_provider import ask_llm
+from .storage import supabase
+from .llm_provider import ask_llm
 
 embedding_model = SentenceTransformer("multi-qa-MiniLM-L6-cos-v1")
 

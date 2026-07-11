@@ -3,7 +3,7 @@ import yt_dlp
 import whisper
 from scenedetect import detect, ContentDetector
 import easyocr
-from reachiq_video_rag_engine.storage import (
+from .storage import (
     insert_video,
     insert_transcript,
     insert_chunk,

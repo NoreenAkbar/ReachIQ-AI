@@ -1,4 +1,4 @@
-from reachiq_video_rag_engine.query import (
+from .query import (
     retrieve_hook_chunks,
     retrieve_cta_chunks,
     retrieve_structure_chunks,
@@ -6,9 +6,9 @@ from reachiq_video_rag_engine.query import (
     retrieve_trend_chunks,
 )
 
-from reachiq_video_rag_engine.llm_provider import ask_llm
-from reachiq_video_rag_engine.query import extract_primary_niche
-niche = extract_primary_niche(niche)
+from .llm_provider import ask_llm
+from .query import extract_primary_niche
+
 import json
 
 
@@ -18,7 +18,7 @@ class CompetitiveIntelligenceEngine:
         pass
 
     def analyze(self, niche: str, video_id=None):
-
+        niche = extract_primary_niche(niche)
         hook_chunks = retrieve_hook_chunks(niche)
 
         cta_chunks = retrieve_cta_chunks(niche)
