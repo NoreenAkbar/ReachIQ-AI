@@ -24,7 +24,9 @@ GROQ_API_KEY = get_config("GROQ_API_KEY")
 FIREWORKS_API_KEY = get_config("FIREWORKS_API_KEY")
 
 LLM_PROVIDER = get_config("RAG_LLM_PROVIDER", "groq")
-
+print("SUPABASE_URL =", SUPABASE_URL)
+print("SERVICE KEY EXISTS =", SUPABASE_SERVICE_KEY is not None)
+print("CONFIG SOURCE =", "streamlit" if "SUPABASE_URL" in secrets else "env")
 MODELS = {
     "fireworks": "accounts/fireworks/models/gemma-4-31b-it",
     "groq": "openai/gpt-oss-120b"
