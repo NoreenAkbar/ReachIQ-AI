@@ -33,6 +33,22 @@ ReachIQ's Competitive Intelligence engine was successfully deployed and validate
 - ✅ Competitive Intelligence pipeline verified on AMD compute
 
 > Public endpoint exposure was unavailable in the managed notebook environment. AMD compute usage was successfully demonstrated using ROCm, vLLM and Gemma 3 running on AMD Developer Cloud.
+
+## Project Pipline
+Competitor Videos
+        ↓
+Whisper + OCR
+        ↓
+Embedding Generation
+        ↓
+Supabase pgvector
+        ↓
+Semantic Retrieval (RAG)
+        ↓
+Gemma 3 4B (AMD ROCm + vLLM)
+        ↓
+Executive Competitive Intelligence Report
+
 ## What ReachIQ AI Does
 
 ReachIQ AI automates the entire YouTube content lifecycle through coordinated AI agents:
