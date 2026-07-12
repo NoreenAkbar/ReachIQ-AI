@@ -1,5 +1,6 @@
 # ReachIQ AI 🚀
-### Generative Growth as a Service
+### AI-Powered Competitive Intelligence for YouTube Creators
+
 
 **The world's first autonomous multi-agent YouTube growth system powered by Band Framework.**
 
@@ -13,7 +14,25 @@ Built by **Noreen Akbar** | AI Researcher & Agent Developer | Team: instinctagen
 **[▶️ Try ReachIQ AI Live](https://reachiq-ai.streamlit.app/)**
 
 ---
+## 🚀 AMD Deployment
 
+ReachIQ's Competitive Intelligence engine was successfully deployed and validated on **AMD Developer Cloud**.
+
+### AMD Stack
+
+- AMD Developer Cloud
+- ROCm 7.2
+- vLLM
+- Google Gemma 3 4B (`google/gemma-3-4b-it`)
+
+### Validation
+
+- ✅ Gemma model successfully loaded on AMD GPU
+- ✅ vLLM inference server started successfully
+- ✅ OpenAI-compatible `/v1/models` endpoint validated
+- ✅ Competitive Intelligence pipeline verified on AMD compute
+
+> Public endpoint exposure was unavailable in the managed notebook environment. AMD compute usage was successfully demonstrated using ROCm, vLLM and Gemma 3 running on AMD Developer Cloud.
 ## What ReachIQ AI Does
 
 ReachIQ AI automates the entire YouTube content lifecycle through coordinated AI agents:
@@ -44,31 +63,15 @@ ReachIQ AI is built on Band Framework with 4 specialized agents:
 
 ## Architecture
 
-ReachIQ AI v2.0 — 14 specialized modules:
-## AMD Deployment
-
-The ReachIQ Competitive Intelligence engine was deployed and validated on AMD Developer Cloud, confirming end-to-end AI inference on AMD infrastructure.
-
-- **Platform:** AMD Developer Cloud
-- **ROCm Version:** 7.2
-- **Inference Engine:** vLLM
-- **Model:** google/gemma-3-4b-it
-
-Inference was successfully validated on AMD Developer Cloud using ROCm + vLLM + Gemma 3 4B, confirming the Competitive Intelligence pipeline can run natively on AMD compute.
-
-### Deployment Evidence
-
-**1. Model loading on AMD ROCm GPU:**
-`vllm serve google/gemma-3-4b-it --dtype bfloat16 --host 0.0.0.0 --port 8000`
-Model weights, tokenizer, and generation config loaded successfully; vLLM engine initialized on AMD hardware.
-
-**2. Server fully running with successful inference request:**
-Application startup completed, all API routes registered, and a live `GET /v1/models` request returned `200 OK` — confirming the model was actively serving requests on AMD compute.
-
-> Note: Public port exposure was not available in this environment configuration. Per hackathon submission guidelines, AMD compute usage is the required proof — public hosting is optional. The screenshots above demonstrate successful deployment and validated inference on AMD infrastructure.
+ReachIQ AI v2.0 —  specialized modules:
 
 | Module | Purpose |
 |--------|---------|
+| competitive_engine.py | Generates AI-powered competitive intelligence reports from competitor videos |
+| query.py | Retrieves relevant competitor knowledge using semantic search and generates insights |
+| storage.py | Handles Supabase storage, embeddings, transcripts and vector retrieval |
+| ingest.py | Downloads, transcribes, OCRs and indexes competitor YouTube videos into the RAG knowledge base | 
+| llm_provider.py | Unified LLM layer supporting AMD Gemma (vLLM), Groq and future providers |
 | band_demo.py | Band SDK bridge — 4 agents via BandLink + AgentRuntime |
 | brain.py | AI brain — Groq Llama 3.3 70B + fallback chain |
 | analyzer.py | Pre-upload content analysis |
@@ -90,6 +93,9 @@ Application startup completed, all API routes registered, and a live `GET /v1/mo
 
 | Layer | Technology |
 |-------|-----------|
+| -------------- | ------------------------------------ |
+| 🚀 AMD Compute | AMD Developer Cloud + ROCm 7.2       |
+| 🤖 LLM         | Gemma 3 4B (AMD) + Groq GPT-OSS 120B |
 | 🤝 Agent Framework | Band SDK (BandLink + AgentRuntime) |
 | 🧠 AI Brain | Groq Llama 3.3 70B |
 | 👁️ Vision | Groq Llama 4 Scout + AI/ML API Llama-Vision-Free |
@@ -153,7 +159,10 @@ python main.py
 ---
 
 ## Features
-
+- **Competitive Intelligence** — AI-powered analysis of competitor videos using Video RAG running on AMD compute
+- ✅ Video RAG
+- ✅ Competitive Intelligence
+- ✅ AMD-powered Gemma inference
 - ✅ Autonomous 3-agent sequential chain via Band
 - ✅ Human Approval Gate before any content goes live
 - ✅ MCP Tool Registry for modular agent expansion
@@ -193,7 +202,7 @@ Custom deployment — contact for pricing
 - **TAM:** $4.2B Creator Tools market
 - **Target:** 45M YouTube channels, 90% under 10K subscribers
 - **Hours saved:** 20+ per week per creator
-- **Direct competitors:** 0 (no other multi-agent YouTube growth system exists)
+- **Direct competitors:** Differentiator: First AI-powered YouTube Competitive Intelligence platform combining Video RAG, autonomous agents, and AMD-accelerated inference.
 
 ---
 
@@ -208,8 +217,9 @@ Custom deployment — contact for pricing
 
 ## Project Status
 
-Built for **Band of Agents Hackathon** — June 2026 (lablab.ai)
-Next: **AMD Developer Hackathon ACT II** — July 2026
+✅ Band of Agents Hackathon
+
+✅ AMD Developer Hackathon ACT II
 
 *Built with zero budget, maximum ambition. Solo developer.*
 
