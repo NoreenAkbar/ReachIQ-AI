@@ -14,6 +14,13 @@ Built by **Noreen Akbar** | AI Researcher & Agent Developer | Team: instinctagen
 **[▶️ Try ReachIQ AI Live](https://reachiq-ai.streamlit.app/)**
 
 ---
+## Video RAG Engine
+
+ReachIQ AI uses a dedicated Video RAG engine for competitor intelligence, semantic retrieval, and AMD-powered Competitive Intelligence.
+
+**Repository:**
+https://github.com/NoreenAkbar/ReachIQ-video-rag-engine
+
 ## 🚀 AMD Deployment
 
 ReachIQ's Competitive Intelligence engine was successfully deployed and validated on **AMD Developer Cloud**.
